@@ -9,6 +9,12 @@
     <title>🚒 Autobomba - Esquiva los Fuegos</title>
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="styles.css">
+    
+    <!-- Leaflet CSS para mapa real -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin=""/>
+    
     <meta name="theme-color" content="#ff4444">
     <link rel="icon" type="image/svg+xml" href="icon-base.svg">
     <link rel="apple-touch-icon" href="icon-base.svg">
@@ -186,32 +192,8 @@
             <h1>🗺️ Ruta de la Misión</h1>
             
             <div class="map-container">
-                <div id="route-map">
-                    <div class="map-placeholder">
-                        <div class="map-grid">
-                            <div class="grid-line"></div>
-                            <div class="grid-line"></div>
-                            <div class="grid-line"></div>
-                            <div class="grid-line"></div>
-                        </div>
-                        
-                        <div class="route-line" id="route-visualization"></div>
-                        
-                        <div class="map-marker start-marker" id="start-marker">
-                            <span>🏁</span>
-                            <div class="marker-label">INICIO</div>
-                        </div>
-                        
-                        <div class="map-marker end-marker" id="end-marker">
-                            <span>🚩</span>
-                            <div class="marker-label">FINAL</div>
-                        </div>
-                        
-                        <div class="map-info">
-                            <div class="compass">🧭</div>
-                            <div class="scale">Escala: 1km = 50px</div>
-                        </div>
-                    </div>
+                <div id="route-map" style="height: 400px; width: 100%; border-radius: 10px; overflow: hidden; border: 2px solid #444;">
+                    <!-- Leaflet map se cargará aquí -->
                 </div>
                 
                 <div class="route-stats">
@@ -257,6 +239,11 @@
         </div>
     </div>
 
+    <!-- Leaflet JS para mapa real -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
+        
     <script src="game.js"></script>
     <script>
         // Registrar el Service Worker

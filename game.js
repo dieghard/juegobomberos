@@ -8,6 +8,16 @@ let firesDodged = 0;
 let gameSpeed = 1;
 let animationId;
 
+// Controles de teclado para pantallas grandes
+let keyboardControls = {
+    left: false,
+    right: false,
+    up: false,
+    down: false
+};
+let isLargeScreen = false;
+let useKeyboardControls = false;
+
 // Variables de distancia y velocidad
 let totalDistance = 0;
 let currentSpeed = 0;
@@ -63,6 +73,14 @@ document.addEventListener('DOMContentLoaded', () => {
     setupPermissionButton();
     setupMapControls();
     checkPermissionsOnLoad();
+    
+    // Detectar tipo de pantalla y configurar controles
+    detectScreenSize();
+    setupKeyboardControls();
+    
+    // Actualizar controles cuando cambie el tamaño de pantalla
+    window.addEventListener('resize', detectScreenSize);
+    
     // Inicializar PWA
     initPWA();
     // Solicitar ubicación después de un breve delay para mejor UX
@@ -219,16 +237,149 @@ function initGame() {
     gameLoop();
 }
 
-// Sistema de Audio
+// Sistema de Audio mejorado
 function initAudio() {
     try {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        audioEnabled = true;
-        console.log('Sistema de audio inicializado');
+        // Intentar crear AudioContext
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        
+        // Verificar estado del contexto
+        if (audioContext.state === 'suspended') {
+            console.log('AudioContext suspendido, intentando reanudar...');
+            audioContext.resume().then(() => {
+                audioEnabled = true;
+                console.log('Sistema de audio reanudado correctamente');
+            }).catch(err => {
+                console.warn('Error al reanudar audio:', err);
+                audioEnabled = false;
+            });
+        } else {
+            audioEnabled = true;
+            console.log('Sistema de audio inicializado correctamente');
+        }
+        
+        // Test básico de audio
+        setTimeout(() => {
+            if (audioEnabled && audioContext && audioContext.state === 'running') {
+                console.log('Audio funcionando correctamente');
+            } else {
+                console.warn('Audio no está funcionando correctamente');
+                audioEnabled = false;
+            }
+        }, 100);
+        
     } catch (error) {
         console.warn('Audio no disponible:', error);
         audioEnabled = false;
     }
+}
+
+// Función para reactivar audio en interacción del usuario
+function ensureAudioContext() {
+    if (!audioContext) {
+        initAudio();
+        return;
+    }
+    
+    if (audioContext.state === 'suspended') {
+        audioContext.resume().then(() => {
+            audioEnabled = true;
+            console.log('Audio reactivado por interacción del usuario');
+        }).catch(err => {
+            console.warn('Error al reactivar audio:', err);
+        });
+    }
+}
+
+// Detectar pantallas grandes y configurar controles
+function detectScreenSize() {
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    // Considerar pantalla grande si es mayor a 768px Y no es móvil
+    isLargeScreen = (width > 768 && height > 500) && !isMobile;
+    
+    if (isLargeScreen) {
+        console.log('Pantalla grande detectada - Habilitando controles de teclado');
+        useKeyboardControls = true;
+        showKeyboardInstructions();
+    } else {
+        console.log('Pantalla móvil detectada - Usando giroscopio');
+        useKeyboardControls = false;
+        hideKeyboardInstructions();
+    }
+}
+
+// Mostrar instrucciones de teclado
+function showKeyboardInstructions() {
+    const instructionsDiv = document.querySelector('.movement-instructions') || 
+                           document.querySelector('.permission-status');
+    if (instructionsDiv) {
+        instructionsDiv.innerHTML = `
+            <p>🖥️ <strong>Pantalla grande detectada</strong></p>
+            <p>Usa las teclas <strong>A/D</strong> o <strong>←/→</strong> para mover el autobomba</p>
+            <p><small>También puedes usar WASD o las flechas del teclado</small></p>
+        `;
+    }
+}
+
+// Ocultar instrucciones de teclado
+function hideKeyboardInstructions() {
+    // Restaurar instrucciones originales de giroscopio si es necesario
+}
+
+// Configurar event listeners para teclado
+function setupKeyboardControls() {
+    document.addEventListener('keydown', (event) => {
+        if (gameState !== 'playing' || !useKeyboardControls) return;
+        
+        switch(event.key.toLowerCase()) {
+            case 'a':
+            case 'arrowleft':
+                keyboardControls.left = true;
+                break;
+            case 'd':
+            case 'arrowright':
+                keyboardControls.right = true;
+                break;
+            case 'w':
+            case 'arrowup':
+                keyboardControls.up = true;
+                break;
+            case 's':
+            case 'arrowdown':
+                keyboardControls.down = true;
+                break;
+        }
+        event.preventDefault();
+    });
+    
+    document.addEventListener('keyup', (event) => {
+        if (!useKeyboardControls) return;
+        
+        switch(event.key.toLowerCase()) {
+            case 'a':
+            case 'arrowleft':
+                keyboardControls.left = false;
+                break;
+            case 'd':
+            case 'arrowright':
+                keyboardControls.right = false;
+                break;
+            case 'w':
+            case 'arrowup':
+                keyboardControls.up = false;
+                break;
+            case 's':
+            case 'arrowdown':
+                keyboardControls.down = false;
+                break;
+        }
+        event.preventDefault();
+    });
 }
 
 function createTone(frequency, duration, type = 'sine', volume = 0.1) {
@@ -766,6 +917,9 @@ function startCountdown() {
 }
 
 function startGame() {
+    // Asegurar que el audio funcione
+    ensureAudioContext();
+    
     gameState = 'playing';
     gameStartTime = Date.now();
     score = 0;
@@ -1056,17 +1210,40 @@ function updateLocationDisplay() {
 function updateFiretruckPosition() {
     if (gameState !== 'playing') return;
     
-    // Usar la inclinación gamma (izquierda-derecha) para mover la autobomba
-    const sensitivity = 3;
-    const maxTilt = 30; // grados máximos de inclinación
+    let moveSpeed = 0;
     
-    // Normalizar el valor gamma (-30 a 30 grados)
-    let normalizedGamma = Math.max(-maxTilt, Math.min(maxTilt, deviceOrientation.gamma));
+    // Usar controles de teclado si es pantalla grande
+    if (useKeyboardControls && isLargeScreen) {
+        const keySpeed = firetruck.speed * 0.8; // Velocidad del teclado
+        
+        if (keyboardControls.left) {
+            moveSpeed = -keySpeed;
+        }
+        if (keyboardControls.right) {
+            moveSpeed = keySpeed;
+        }
+        
+        // Movimiento vertical opcional para pantallas grandes
+        if (keyboardControls.up && firetruck.y > 50) {
+            firetruck.y -= keySpeed * 0.3;
+        }
+        if (keyboardControls.down && firetruck.y < canvas.height - firetruck.height - 50) {
+            firetruck.y += keySpeed * 0.3;
+        }
+        
+    } else {
+        // Usar giroscopio como antes
+        const sensitivity = 3;
+        const maxTilt = 30; // grados máximos de inclinación
+        
+        // Normalizar el valor gamma (-30 a 30 grados)
+        let normalizedGamma = Math.max(-maxTilt, Math.min(maxTilt, deviceOrientation.gamma));
+        
+        // Convertir a velocidad de movimiento
+        moveSpeed = (normalizedGamma / maxTilt) * firetruck.speed;
+    }
     
-    // Convertir a velocidad de movimiento
-    const moveSpeed = (normalizedGamma / maxTilt) * firetruck.speed;
-    
-    // Actualizar posición
+    // Actualizar posición horizontal
     firetruck.x += moveSpeed;
     
     // Mantener dentro de los límites
@@ -1124,7 +1301,7 @@ function spawnFire() {
         y: -fireSize,
         width: fireSize,
         height: fireSize,
-        speed: 2 + gameSpeed + Math.random() * 3,
+        speed: 1.5 + gameSpeed * 0.7 + Math.random() * 2, // Velocidad más baja inicialmente
         intensity: 0.5 + Math.random() * 0.5,
         type: Math.random() > 0.8 ? 'large' : 'normal'
     };
@@ -1230,11 +1407,11 @@ function updateGameState() {
     
     timeElapsed = Math.floor((Date.now() - gameStartTime) / 1000);
     
-    // Aumentar dificultad con el tiempo
-    gameSpeed = 1 + timeElapsed * 0.05;
+    // Aumentar dificultad con el tiempo (progresión más gradual)
+    gameSpeed = 0.8 + timeElapsed * 0.03; // Comenzar más lento y progresar gradualmente
     
-    // Spawning de fuegos más frecuente con el tiempo
-    const spawnRate = Math.max(0.02, 0.08 - timeElapsed * 0.001);
+    // Spawning de fuegos más frecuente con el tiempo (menos agresivo inicialmente)
+    const spawnRate = Math.max(0.015, 0.05 - timeElapsed * 0.0008); // Comenzar con menos fuegos
     if (Math.random() < spawnRate) {
         spawnFire();
     }
@@ -1630,8 +1807,9 @@ function showMapScreen() {
     visualizeRoute();
 }
 
+// Función para mostrar un mapa real con Leaflet
 function visualizeRoute() {
-    console.log('Visualizando ruta:', { startLocation, endLocation });
+    console.log('Visualizando ruta con mapa real:', { startLocation, endLocation });
     
     // Verificar si tenemos datos GPS reales
     const hasStartData = startLocation && startLocation.lat !== null && startLocation.lng !== null;
@@ -1640,124 +1818,118 @@ function visualizeRoute() {
     console.log('Datos GPS disponibles:', { hasStartData, hasEndData });
     
     if (!hasStartData && !hasEndData) {
-        console.log('No hay datos de ubicación suficientes para mostrar ruta');
-        
-        // Mostrar mensaje de error en el mapa
-        const routeLine = document.getElementById('route-visualization');
-        routeLine.style.display = 'none';
-        
-        const startMarker = document.getElementById('start-marker');
-        const endMarker = document.getElementById('end-marker');
-        
-        startMarker.style.left = '50px';
-        startMarker.style.top = '50px';
-        startMarker.querySelector('.marker-label').textContent = 'SIN DATOS GPS';
-        
-        endMarker.style.left = '200px';
-        endMarker.style.top = '250px';
-        endMarker.querySelector('.marker-label').textContent = 'SIN DATOS GPS';
-        
+        console.log('No hay datos de ubicación suficientes para mostrar mapa real');
+        initFallbackMap();
         return;
     }
     
-    // Si tenemos al menos una ubicación, usar datos disponibles
+    // Usar ubicaciones disponibles o current location como respaldo
     let startLat, startLng, endLat, endLng;
     
     if (hasStartData) {
         startLat = startLocation.lat;
         startLng = startLocation.lng;
     } else {
-        // Usar ubicación actual como inicio si no hay datos de inicio
-        startLat = currentLocation.lat || 0;
-        startLng = currentLocation.lng || 0;
+        startLat = currentLocation.lat || -34.6118; // Buenos Aires por defecto
+        startLng = currentLocation.lng || -58.3960;
     }
     
     if (hasEndData) {
         endLat = endLocation.lat;
         endLng = endLocation.lng;
     } else {
-        // Usar ubicación actual como fin si no hay datos de fin
-        endLat = currentLocation.lat || 0;
-        endLng = currentLocation.lng || 0;
+        endLat = currentLocation.lat || -34.6118;
+        endLng = currentLocation.lng || -58.3960;
     }
     
     // Si no hay movimiento real, simular una ruta pequeña
     if (startLat === endLat && startLng === endLng) {
-        endLat += 0.001; // Agregar pequeño desplazamiento
-        endLng += 0.001;
+        endLat += 0.005; // Agregar pequeño desplazamiento
+        endLng += 0.005;
     }
     
-    // Calcular la diferencia de coordenadas
-    const deltaLat = endLat - startLat;
-    const deltaLng = endLng - startLng;
-    const totalDistance = calculateDistance(startLat, startLng, endLat, endLng);
-    
-    console.log('Deltas calculados:', { deltaLat, deltaLng, totalDistance });
-    
-    // Contenedor del mapa
-    const mapWidth = 360; // ancho real del contenedor
-    const mapHeight = 350; // alto real del contenedor
-    
-    // Escalar para que la ruta sea visible (mínimo 50px, máximo 250px)
-    const minDistance = 50;
-    const maxDistance = 200;
-    
-    let scale;
-    if (totalDistance > 0.001) { // Si hay movimiento real
-        scale = Math.max(minDistance, Math.min(maxDistance, totalDistance * 50000));
-    } else {
-        // Si no hay movimiento, usar escala fija
-        scale = minDistance * 2;
+    initLeafletMap(startLat, startLng, endLat, endLng);
+}
+
+// Inicializar mapa real con Leaflet
+function initLeafletMap(startLat, startLng, endLat, endLng) {
+    try {
+        const mapContainer = document.getElementById('route-map');
+        
+        // Limpiar mapa anterior si existe
+        if (window.routeMapInstance) {
+            window.routeMapInstance.remove();
+        }
+        
+        // Calcular centro del mapa
+        const centerLat = (startLat + endLat) / 2;
+        const centerLng = (startLng + endLng) / 2;
+        
+        // Crear mapa
+        const map = L.map('route-map', {
+            zoomControl: true,
+            scrollWheelZoom: false,
+            doubleClickZoom: false,
+            touchZoom: true
+        }).setView([centerLat, centerLng], 15);
+        
+        // Agregar tiles de OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 18
+        }).addTo(map);
+        
+        // Marcador de inicio
+        const startMarker = L.marker([startLat, startLng]).addTo(map);
+        startMarker.bindPopup('🏁 <b>INICIO</b><br>Ubicación inicial').openPopup();
+        
+        // Marcador de fin
+        const endMarker = L.marker([endLat, endLng]).addTo(map);
+        endMarker.bindPopup('🚩 <b>FINAL</b><br>Ubicación final');
+        
+        // Línea de ruta
+        const routeLine = L.polyline([
+            [startLat, startLng],
+            [endLat, endLng]
+        ], {
+            color: '#ff4444',
+            weight: 4,
+            opacity: 0.8
+        }).addTo(map);
+        
+        // Ajustar vista para mostrar toda la ruta
+        const group = new L.featureGroup([startMarker, endMarker, routeLine]);
+        map.fitBounds(group.getBounds().pad(0.1));
+        
+        // Guardar referencia del mapa
+        window.routeMapInstance = map;
+        
+        // Calcular distancia real
+        const distance = calculateDistance(startLat, startLng, endLat, endLng);
+        document.getElementById('map-distance').textContent = distance.toFixed(2) + ' km';
+        
+        console.log('Mapa real inicializado correctamente');
+        
+    } catch (error) {
+        console.error('Error al crear mapa real:', error);
+        initFallbackMap();
     }
-    
-    const pixelDeltaX = deltaLng * scale;
-    const pixelDeltaY = -deltaLat * scale; // invertir Y para mapas
-    
-    console.log('Pixels calculados:', { pixelDeltaX, pixelDeltaY, scale });
-    
-    // Centrar la ruta en el mapa
-    const centerX = mapWidth / 2;
-    const centerY = mapHeight / 2;
-    
-    // Posiciones de marcadores
-    const startX = Math.max(30, Math.min(mapWidth - 30, centerX - pixelDeltaX/2));
-    const startY = Math.max(30, Math.min(mapHeight - 30, centerY - pixelDeltaY/2));
-    
-    const endX = Math.max(30, Math.min(mapWidth - 30, centerX + pixelDeltaX/2));
-    const endY = Math.max(30, Math.min(mapHeight - 30, centerY + pixelDeltaY/2));
-    
-    console.log('Posiciones finales:', { startX, startY, endX, endY });
-    
-    // Actualizar posiciones de marcadores
-    const startMarker = document.getElementById('start-marker');
-    const endMarker = document.getElementById('end-marker');
-    
-    startMarker.style.left = startX + 'px';
-    startMarker.style.top = startY + 'px';
-    startMarker.querySelector('.marker-label').textContent = 'INICIO';
-    
-    endMarker.style.left = endX + 'px';
-    endMarker.style.top = endY + 'px';
-    endMarker.querySelector('.marker-label').textContent = 'FINAL';
-    
-    // Dibujar línea de ruta
-    const routeLine = document.getElementById('route-visualization');
-    const lineLength = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
-    const angle = Math.atan2(endY - startY, endX - startX) * 180 / Math.PI;
-    
-    routeLine.style.display = 'block';
-    routeLine.style.width = lineLength + 'px';
-    routeLine.style.height = '4px';
-    routeLine.style.left = startX + 'px';
-    routeLine.style.top = startY + 'px';
-    routeLine.style.transform = `rotate(${angle}deg)`;
-    routeLine.style.transformOrigin = '0 50%';
-    routeLine.style.background = '#ff4444';
-    routeLine.style.position = 'absolute';
-    routeLine.style.borderRadius = '2px';
-    routeLine.style.boxShadow = '0 0 10px rgba(255,68,68,0.7)';
-    
-    console.log('Ruta visualizada correctamente');
+}
+
+// Mapa de respaldo si Leaflet falla
+function initFallbackMap() {
+    const mapContainer = document.getElementById('route-map');
+    mapContainer.innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: linear-gradient(135deg, #2c3e50, #3498db); color: white; text-align: center; border-radius: 10px;">
+            <div>
+                <div style="font-size: 48px; margin-bottom: 10px;">🗺️</div>
+                <div style="font-size: 18px; margin-bottom: 5px;">Mapa GPS</div>
+                <div style="font-size: 14px; opacity: 0.8;">
+                    ${startLocation.lat ? 'Ruta registrada correctamente' : 'Activar GPS para ver ruta real'}
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 function shareRoute() {
