@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>🚒 Autobomba - Esquiva los Fuegos</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css">
+    <meta name="theme-color" content="#ff4444">
+    <link rel="icon" type="image/png" href="icon-192.png">
+    <link rel="apple-touch-icon" href="icon-192.png">
+</head>
+<body>
+    <!-- Pantalla de presentación -->
+    <div id="presentation-screen" class="screen active">
+        <div class="container">
+            <div class="title">
+                <h1>🚒 AUTOBOMBA</h1>
+                <h2>Esquiva los Fuegos del Bosque</h2>
+            </div>
+            
+            <div class="game-info">
+                <div class="feature">
+                    <span class="icon">📱</span>
+                    <p>Inclina tu celular para mover la autobomba</p>
+                </div>
+                <div class="feature">
+                    <span class="icon">🔥</span>
+                    <p>Esquiva los fuegos del bosque</p>
+                </div>
+                <div class="feature">
+                    <span class="icon">📍</span>
+                    <p>Usa tu ubicación GPS para más realismo</p>
+                </div>
+                <div class="feature">
+                    <span class="icon">⚡</span>
+                    <p>La dificultad aumenta con el tiempo</p>
+                </div>
+            </div>
+
+            <div class="start-instruction">
+                <div class="shake-icon">📳</div>
+                <p><strong>¡AGITA TU CELULAR PARA COMENZAR!</strong></p>
+                <div class="countdown" id="countdown"></div>
+                
+                <!-- Botón para solicitar permisos manualmente (especialmente para iOS) -->
+                <button id="permission-btn" class="permission-button" style="display: none;">
+                    🔓 Permitir Sensores
+                </button>
+                <div id="permission-status" class="permission-status"></div>
+            </div>
+
+            <div class="location-status" id="location-status">
+                <span class="icon">📍</span>
+                <span id="location-text">Preparando ubicación...</span>
+                <button id="location-btn" class="permission-button" style="display: none; margin-top: 10px; padding: 8px 16px; font-size: 0.9em;">
+                    📍 Permitir Ubicación
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pantalla del juego -->
+    <div id="game-screen" class="screen">
+        <div class="game-ui">
+            <div class="ui-top">
+                <div class="score">
+                    <span>Puntos: <span id="score">0</span></span>
+                </div>
+                <div class="time">
+                    <span>Tiempo: <span id="time">0</span>s</span>
+                </div>
+            </div>
+            
+            <div class="ui-bottom">
+                <div class="speed">
+                    <span>Velocidad: <span id="speed">0</span> km/h</span>
+                </div>
+                <div class="distance">
+                    <span>Distancia: <span id="distance">0.0</span> km</span>
+                </div>
+                <div class="location-info">
+                    <span id="current-location">📍 Ubicación actual</span>
+                </div>
+            </div>
+        </div>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="controls-hint">
+            <p>🔄 Inclina tu dispositivo para mover la autobomba</p>
+        </div>
+    </div>
+
+    <!-- Pantalla de Game Over -->
+    <div id="gameover-screen" class="screen">
+        <div class="container">
+            <h1>🚒 ¡MISIÓN TERMINADA!</h1>
+            <div class="final-stats">
+                <div class="stat">
+                    <span class="label">Puntos Finales:</span>
+                    <span class="value" id="final-score">0</span>
+                </div>
+                <div class="stat">
+                    <span class="label">Tiempo Sobrevivido:</span>
+                    <span class="value" id="final-time">0s</span>
+                </div>
+                <div class="stat">
+                    <span class="label">Fuegos Esquivados:</span>
+                    <span class="value" id="fires-dodged">0</span>
+                </div>
+                <div class="stat">
+                    <span class="label">Distancia Recorrida:</span>
+                    <span class="value" id="final-distance">0.0 km</span>
+                </div>
+                <div class="stat">
+                    <span class="label">Velocidad Máxima:</span>
+                    <span class="value" id="max-speed">0 km/h</span>
+                </div>
+            </div>
+            
+            <div class="route-summary">
+                <h3>🗺️ Ruta de la Misión</h3>
+                <div class="route-info">
+                    <div class="route-point">
+                        <span class="route-icon">🏁</span>
+                        <div>
+                            <strong>Inicio:</strong>
+                            <span id="start-location">Calculando...</span>
+                        </div>
+                    </div>
+                    <div class="route-point">
+                        <span class="route-icon">🚩</span>
+                        <div>
+                            <strong>Final:</strong>
+                            <span id="end-location">Calculando...</span>
+                        </div>
+                    </div>
+                </div>
+                <button id="view-map-btn" class="map-button">
+                    🗺️ Ver Ruta en Mapa
+                </button>
+            </div>
+            
+            <div class="restart-instruction">
+                <div class="shake-icon">📳</div>
+                <p><strong>¡AGITA PARA JUGAR DE NUEVO!</strong></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pantalla del Mapa -->
+    <div id="map-screen" class="screen">
+        <div class="container">
+            <h1>🗺️ Ruta de la Misión</h1>
+            
+            <div class="map-container">
+                <div id="route-map">
+                    <div class="map-placeholder">
+                        <div class="map-grid">
+                            <div class="grid-line"></div>
+                            <div class="grid-line"></div>
+                            <div class="grid-line"></div>
+                            <div class="grid-line"></div>
+                        </div>
+                        
+                        <div class="route-line" id="route-visualization"></div>
+                        
+                        <div class="map-marker start-marker" id="start-marker">
+                            <span>🏁</span>
+                            <div class="marker-label">INICIO</div>
+                        </div>
+                        
+                        <div class="map-marker end-marker" id="end-marker">
+                            <span>🚩</span>
+                            <div class="marker-label">FINAL</div>
+                        </div>
+                        
+                        <div class="map-info">
+                            <div class="compass">🧭</div>
+                            <div class="scale">Escala: 1km = 50px</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="route-stats">
+                    <div class="stat-card">
+                        <span class="stat-icon">📏</span>
+                        <div>
+                            <div class="stat-label">Distancia Total</div>
+                            <div class="stat-value" id="map-distance">0.0 km</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <span class="stat-icon">⏱️</span>
+                        <div>
+                            <div class="stat-label">Tiempo Misión</div>
+                            <div class="stat-value" id="map-time">0s</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <span class="stat-icon">🏆</span>
+                        <div>
+                            <div class="stat-label">Puntuación</div>
+                            <div class="stat-value" id="map-score">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="map-controls">
+                <button id="close-map-btn" class="map-button">
+                    ⬅️ Volver
+                </button>
+                <button id="share-route-btn" class="map-button">
+                    📱 Compartir Ruta
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script>
+        // Registrar el Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then((registration) => {
+                        console.log('SW registrado exitosamente');
+                    })
+                    .catch((registrationError) => {
+                        console.log('SW falló en registrarse');
+                    });
+            });
+        }
+    </script>
+</body>
+</html>

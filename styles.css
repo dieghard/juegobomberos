@@ -1,0 +1,655 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background: linear-gradient(135deg, #2d5016, #4a7c23, #2d5016);
+    background-size: 400% 400%;
+    animation: gradientShift 8s ease infinite;
+    overflow: hidden;
+    height: 100vh;
+    color: white;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* Pantallas */
+.screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+}
+
+.screen.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.container {
+    text-align: center;
+    padding: 20px;
+    max-width: 90%;
+}
+
+/* Pantalla de presentación */
+#presentation-screen .title h1 {
+    font-size: 3.5em;
+    margin-bottom: 10px;
+    text-shadow: 3px 3px 6px rgba(0,0,0,0.7);
+    animation: titlePulse 2s ease-in-out infinite;
+}
+
+@keyframes titlePulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+#presentation-screen .title h2 {
+    font-size: 1.5em;
+    margin-bottom: 40px;
+    color: #ffeb3b;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+.game-info {
+    margin: 40px 0;
+}
+
+.feature {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 20px 0;
+    background: rgba(255,255,255,0.1);
+    padding: 15px;
+    border-radius: 15px;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    animation: featureSlide 0.6s ease-out forwards;
+    opacity: 0;
+    transform: translateX(-50px);
+}
+
+.feature:nth-child(1) { animation-delay: 0.2s; }
+.feature:nth-child(2) { animation-delay: 0.4s; }
+.feature:nth-child(3) { animation-delay: 0.6s; }
+.feature:nth-child(4) { animation-delay: 0.8s; }
+
+@keyframes featureSlide {
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.feature .icon {
+    font-size: 2em;
+    margin-right: 15px;
+}
+
+.feature p {
+    font-size: 1.1em;
+    text-align: left;
+}
+
+.start-instruction {
+    margin: 40px 0;
+    animation: startBounce 1.5s ease-in-out infinite;
+}
+
+@keyframes startBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.shake-icon {
+    font-size: 4em;
+    margin-bottom: 20px;
+    animation: shake 1s ease-in-out infinite;
+}
+
+@keyframes shake {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-5deg); }
+    75% { transform: rotate(5deg); }
+}
+
+.start-instruction p {
+    font-size: 1.3em;
+    font-weight: bold;
+    color: #ffeb3b;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+}
+
+.permission-button {
+    background: linear-gradient(45deg, #ff9800, #f57c00);
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 25px;
+    font-size: 1.1em;
+    font-weight: bold;
+    margin: 20px 10px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    display: none;
+}
+
+.permission-button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+}
+
+.permission-button.show {
+    display: inline-block;
+    animation: buttonPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes buttonPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.permission-status {
+    margin-top: 15px;
+    padding: 10px 20px;
+    border-radius: 15px;
+    font-size: 0.9em;
+    min-height: 20px;
+}
+
+.permission-status.success {
+    background: rgba(76, 175, 80, 0.3);
+    color: #4caf50;
+    border: 2px solid #4caf50;
+}
+
+.permission-status.error {
+    background: rgba(244, 67, 54, 0.3);
+    color: #f44336;
+    border: 2px solid #f44336;
+}
+
+.permission-status.warning {
+    background: rgba(255, 152, 0, 0.3);
+    color: #ff9800;
+    border: 2px solid #ff9800;
+}
+
+.countdown {
+    font-size: 3em;
+    font-weight: bold;
+    margin-top: 20px;
+    color: #ff5722;
+    text-shadow: 3px 3px 6px rgba(0,0,0,0.7);
+    animation: countdownPulse 1s ease-in-out infinite;
+}
+
+@keyframes countdownPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+}
+
+.location-status {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.7);
+    padding: 10px 20px;
+    border-radius: 25px;
+    font-size: 0.9em;
+}
+
+/* Pantalla del juego */
+#game-screen {
+    flex-direction: column;
+    padding: 0;
+}
+
+.game-ui {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.ui-top {
+    display: flex;
+    justify-content: space-between;
+    padding: 20px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+}
+
+.ui-bottom {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    padding: 20px;
+    background: linear-gradient(0deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+}
+
+.score, .time, .speed, .location-info {
+    background: rgba(0,0,0,0.7);
+    padding: 10px 15px;
+    border-radius: 20px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+}
+
+.score {
+    color: #4caf50;
+    border: 2px solid #4caf50;
+}
+
+.time {
+    color: #2196f3;
+    border: 2px solid #2196f3;
+}
+
+.speed {
+    color: #ff9800;
+    border: 2px solid #ff9800;
+}
+
+.distance {
+    color: #673ab7;
+    border: 2px solid #673ab7;
+}
+
+.location-info {
+    color: #9c27b0;
+    border: 2px solid #9c27b0;
+    font-size: 0.9em;
+}
+
+#gameCanvas {
+    width: 100%;
+    height: 100%;
+    background: #2d5016;
+    touch-action: none;
+}
+
+.controls-hint {
+    position: absolute;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.8);
+    padding: 10px 20px;
+    border-radius: 25px;
+    font-size: 0.9em;
+    animation: hintFade 3s ease-in-out infinite;
+}
+
+@keyframes hintFade {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+}
+
+/* Pantalla de Game Over */
+#gameover-screen .container h1 {
+    font-size: 2.5em;
+    margin-bottom: 30px;
+    color: #ff5722;
+    text-shadow: 3px 3px 6px rgba(0,0,0,0.7);
+}
+
+.final-stats {
+    background: rgba(255,255,255,0.1);
+    padding: 30px;
+    border-radius: 20px;
+    margin: 30px 0;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+}
+
+.stat {
+    display: flex;
+    justify-content: space-between;
+    margin: 15px 0;
+    font-size: 1.2em;
+}
+
+.stat .label {
+    font-weight: normal;
+}
+
+.stat .value {
+    font-weight: bold;
+    color: #ffeb3b;
+}
+
+    .restart-instruction {
+        margin-top: 40px;
+    }
+
+/* Pantalla del Mapa */
+.route-summary {
+    background: rgba(255,255,255,0.1);
+    padding: 25px;
+    border-radius: 20px;
+    margin: 30px 0;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+}
+
+.route-summary h3 {
+    color: #ffeb3b;
+    margin-bottom: 20px;
+    font-size: 1.5em;
+}
+
+.route-info {
+    margin: 20px 0;
+}
+
+.route-point {
+    display: flex;
+    align-items: center;
+    margin: 15px 0;
+    padding: 15px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 10px;
+}
+
+.route-icon {
+    font-size: 2em;
+    margin-right: 15px;
+}
+
+.route-point strong {
+    color: #4caf50;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.map-button {
+    background: linear-gradient(45deg, #2196f3, #03a9f4);
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 25px;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 10px 5px;
+    transition: transform 0.3s ease;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+.map-button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+}
+
+#map-screen .container {
+    max-width: 100%;
+    padding: 20px;
+}
+
+.map-container {
+    background: rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 30px;
+    margin: 30px 0;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+}
+
+.map-placeholder {
+    width: 100%;
+    height: 400px;
+    background: linear-gradient(135deg, #4caf50, #8bc34a);
+    border-radius: 15px;
+    position: relative;
+    overflow: hidden;
+    border: 3px solid #2e7d32;
+}
+
+.map-grid {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.2;
+}
+
+.grid-line {
+    position: absolute;
+    background: white;
+}
+
+.grid-line:nth-child(1) {
+    top: 25%;
+    left: 0;
+    width: 100%;
+    height: 1px;
+}
+
+.grid-line:nth-child(2) {
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 1px;
+}
+
+.grid-line:nth-child(3) {
+    top: 75%;
+    left: 0;
+    width: 100%;
+    height: 1px;
+}
+
+.grid-line:nth-child(4) {
+    top: 0;
+    left: 50%;
+    width: 1px;
+    height: 100%;
+}
+
+.route-line {
+    position: absolute;
+    background: #ff4444;
+    border-radius: 3px;
+    box-shadow: 0 0 10px rgba(255,68,68,0.7);
+    z-index: 2;
+}
+
+.map-marker {
+    position: absolute;
+    z-index: 3;
+    text-align: center;
+    animation: markerBounce 2s ease-in-out infinite;
+}
+
+.map-marker span {
+    font-size: 2em;
+    filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.7));
+}
+
+.marker-label {
+    background: rgba(0,0,0,0.8);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 0.8em;
+    font-weight: bold;
+    margin-top: 5px;
+    white-space: nowrap;
+}
+
+@keyframes markerBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.start-marker {
+    top: 20px;
+    left: 30px;
+}
+
+.end-marker {
+    bottom: 20px;
+    right: 30px;
+}
+
+.map-info {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    text-align: right;
+}
+
+.compass {
+    font-size: 2em;
+    margin-bottom: 5px;
+}
+
+.scale {
+    background: rgba(0,0,0,0.7);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 10px;
+    font-size: 0.8em;
+}
+
+.route-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-top: 30px;
+}
+
+.stat-card {
+    background: rgba(255,255,255,0.1);
+    padding: 20px;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    border: 2px solid rgba(255,255,255,0.2);
+}
+
+.stat-icon {
+    font-size: 2.5em;
+    margin-right: 15px;
+}
+
+.stat-label {
+    font-size: 0.9em;
+    color: #e0e0e0;
+    margin-bottom: 5px;
+}
+
+.stat-value {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #ffeb3b;
+}
+
+.map-controls {
+    text-align: center;
+    margin: 30px 0;
+}/* Responsividad */
+@media (max-width: 480px) {
+    #presentation-screen .title h1 {
+        font-size: 2.5em;
+    }
+    
+    #presentation-screen .title h2 {
+        font-size: 1.2em;
+    }
+    
+    .feature {
+        padding: 10px;
+        margin: 15px 0;
+    }
+    
+    .feature .icon {
+        font-size: 1.5em;
+        margin-right: 10px;
+    }
+    
+    .feature p {
+        font-size: 1em;
+    }
+    
+    .ui-top, .ui-bottom {
+        padding: 15px;
+    }
+    
+    .score, .time, .speed, .distance, .location-info {
+        padding: 8px 12px;
+        font-size: 0.9em;
+    }
+    
+    .map-container {
+        padding: 15px;
+    }
+    
+    .map-placeholder {
+        height: 300px;
+    }
+    
+    .route-stats {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-height: 600px) {
+    .container {
+        padding: 10px;
+    }
+    
+    #presentation-screen .title h1 {
+        font-size: 2em;
+        margin-bottom: 5px;
+    }
+    
+    #presentation-screen .title h2 {
+        font-size: 1em;
+        margin-bottom: 20px;
+    }
+    
+    .game-info {
+        margin: 20px 0;
+    }
+    
+    .feature {
+        margin: 10px 0;
+        padding: 10px;
+    }
+    
+    .start-instruction {
+        margin: 20px 0;
+    }
+    
+    .shake-icon {
+        font-size: 3em;
+        margin-bottom: 10px;
+    }
+}
