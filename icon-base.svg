@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Fondo -->
+  <rect width="512" height="512" fill="#2d5016" rx="60"/>
+  
+  <!-- Bosque de fondo -->
+  <circle cx="120" cy="400" r="40" fill="#1a3d0a"/>
+  <circle cx="180" cy="420" r="30" fill="#1a3d0a"/>
+  <circle cx="330" cy="410" r="35" fill="#1a3d0a"/>
+  <circle cx="400" cy="430" r="25" fill="#1a3d0a"/>
+  
+  <!-- Carretera -->
+  <rect x="180" y="0" width="150" height="512" fill="#404040"/>
+  <rect x="240" y="0" width="30" height="512" fill="#ffeb3b" opacity="0.8"/>
+  
+  <!-- Autobomba -->
+  <g transform="translate(220, 280)">
+    <!-- Sombra -->
+    <rect x="5" y="5" width="72" height="48" fill="rgba(0,0,0,0.3)" rx="8"/>
+    
+    <!-- Cuerpo principal -->
+    <rect x="0" y="0" width="72" height="48" fill="#e53935" rx="8"/>
+    
+    <!-- Ventanas -->
+    <rect x="8" y="8" width="56" height="12" fill="#87ceeb" rx="2"/>
+    
+    <!-- Detalles -->
+    <rect x="12" y="24" width="48" height="8" fill="#ffffff" rx="2"/>
+    
+    <!-- Ruedas -->
+    <circle cx="15" cy="52" r="8" fill="#333333"/>
+    <circle cx="57" cy="52" r="8" fill="#333333"/>
+    <circle cx="15" cy="52" r="4" fill="#666666"/>
+    <circle cx="57" cy="52" r="4" fill="#666666"/>
+    
+    <!-- Luces de emergencia -->
+    <rect x="32" y="-4" width="8" height="4" fill="#ff0000" rx="2"/>
+  </g>
+  
+  <!-- Fuegos -->
+  <g transform="translate(140, 150)">
+    <ellipse cx="0" cy="0" rx="12" ry="18" fill="#ff6b35"/>
+    <ellipse cx="0" cy="-8" rx="8" ry="12" fill="#ff8c42"/>
+    <ellipse cx="0" cy="-12" rx="4" ry="8" fill="#ffeb3b"/>
+  </g>
+  
+  <g transform="translate(350, 180)">
+    <ellipse cx="0" cy="0" rx="10" ry="15" fill="#ff6b35"/>
+    <ellipse cx="0" cy="-6" rx="6" ry="10" fill="#ff8c42"/>
+    <ellipse cx="0" cy="-10" rx="3" ry="6" fill="#ffeb3b"/>
+  </g>
+  
+  <!-- Texto del título -->
+  <text x="256" y="100" text-anchor="middle" fill="#ffeb3b" font-family="Arial Black" font-size="48" font-weight="bold">🚒</text>
+  <text x="256" y="140" text-anchor="middle" fill="#ffffff" font-family="Arial" font-size="24" font-weight="bold">AUTOBOMBA</text>
+</svg>

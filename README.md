@@ -139,6 +139,8 @@ Este proyecto es de código abierto. Puedes usarlo, modificarlo y distribuirlo l
 
 ## 🎉 Créditos
 
+**Desarrollado con ❤️ por Diego Markiewicz** ☕🚀🧉💪💖
+
 Desarrollado como ejemplo de PWA con controles de giroscopio y geolocalización.
 
 ---

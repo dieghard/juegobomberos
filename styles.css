@@ -574,6 +574,43 @@ body {
 .map-controls {
     text-align: center;
     margin: 30px 0;
+}
+
+/* Firma del desarrollador */
+.developer-credit {
+    margin-top: 30px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    animation: creditGlow 3s ease-in-out infinite;
+}
+
+.developer-credit p {
+    margin: 0;
+    font-size: 0.9em;
+    color: #ffeb3b;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+    font-weight: 500;
+}
+
+.developer-credit strong {
+    color: #ffffff;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+}
+
+@keyframes creditGlow {
+    0%, 100% { 
+        box-shadow: 0 0 10px rgba(255, 235, 59, 0.3);
+        transform: scale(1);
+    }
+    50% { 
+        box-shadow: 0 0 20px rgba(255, 235, 59, 0.6);
+        transform: scale(1.02);
+    }
 }/* Responsividad */
 @media (max-width: 480px) {
     #presentation-screen .title h1 {
