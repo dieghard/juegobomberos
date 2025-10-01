@@ -72,6 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initGame();
     setupPermissionButton();
     setupMapControls();
+    setupStartButton(); // Agregar configuración del botón de inicio
     checkPermissionsOnLoad();
     
     // Detectar tipo de pantalla y configurar controles
@@ -88,6 +89,37 @@ document.addEventListener('DOMContentLoaded', () => {
         requestLocationPermission();
     }, 1000);
 });
+
+// Configurar botón de inicio del juego
+function setupStartButton() {
+    const startBtn = document.getElementById('start-game-btn');
+    const controlInstructions = document.getElementById('control-instructions');
+    
+    if (startBtn) {
+        startBtn.addEventListener('click', () => {
+            console.log('Botón de inicio clickeado');
+            handleShake();
+        });
+        
+        // También permitir inicio con teclas
+        document.addEventListener('keydown', (event) => {
+            if (gameState === 'presentation') {
+                if (event.key === 'Enter' || event.key === ' ' || 
+                    event.key === 'ArrowUp' || event.key === 'ArrowDown' || 
+                    event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+                    event.preventDefault();
+                    console.log('Tecla presionada para iniciar:', event.key);
+                    handleShake();
+                }
+            }
+        });
+        
+        // Actualizar instrucciones según el tipo de dispositivo
+        if (isLargeScreen && useKeyboardControls) {
+            controlInstructions.textContent = 'Presiona ENTER, ESPACIO o cualquier flecha para comenzar';
+        }
+    }
+}
 
 function setupPermissionButton() {
     const permissionBtn = document.getElementById('permission-btn');
@@ -323,6 +355,12 @@ function showKeyboardInstructions() {
             <p>Usa las teclas <strong>A/D</strong> o <strong>←/→</strong> para mover el autobomba</p>
             <p><small>También puedes usar WASD o las flechas del teclado</small></p>
         `;
+    }
+    
+    // Actualizar instrucciones del botón de inicio
+    const controlInstructions = document.getElementById('control-instructions');
+    if (controlInstructions) {
+        controlInstructions.textContent = 'Presiona ENTER, ESPACIO o cualquier flecha para comenzar';
     }
 }
 
@@ -825,6 +863,16 @@ function enableTouchControls() {
         presentationScreen.addEventListener('touchstart', (e) => {
             if (gameState === 'presentation') {
                 e.preventDefault();
+                console.log('Toque detectado en pantalla de presentación');
+                handleShake();
+            }
+        });
+        
+        // También agregar evento de clic para pantallas de escritorio
+        presentationScreen.addEventListener('click', (e) => {
+            if (gameState === 'presentation') {
+                e.preventDefault();
+                console.log('Clic detectado en pantalla de presentación');
                 handleShake();
             }
         });
@@ -893,10 +941,16 @@ function setupShakeDetection() {
 }
 
 function handleShake() {
+    console.log('handleShake llamado, gameState actual:', gameState);
+    
     if (gameState === 'presentation') {
+        console.log('Iniciando countdown desde pantalla de presentación');
         startCountdown();
     } else if (gameState === 'gameover') {
+        console.log('Reseteando juego desde pantalla de game over');
         resetGame();
+    } else {
+        console.log('handleShake llamado en estado no válido:', gameState);
     }
 }
 

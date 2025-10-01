@@ -168,6 +168,59 @@ body {
     50% { transform: scale(1.05); }
 }
 
+/* Sección de inicio del juego */
+.start-game-section {
+    margin-top: 30px;
+    padding: 20px;
+}
+
+.start-button {
+    background: linear-gradient(45deg, #ff4444, #cc0000);
+    color: white;
+    border: none;
+    padding: 20px 40px;
+    border-radius: 30px;
+    font-size: 1.4em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 8px 25px rgba(255, 68, 68, 0.4);
+    display: inline-block !important; /* Asegurar que siempre sea visible */
+    animation: startButtonGlow 2s ease-in-out infinite;
+    min-width: 250px;
+}
+
+.start-button:hover {
+    transform: translateY(-5px) scale(1.05);
+    box-shadow: 0 12px 30px rgba(255, 68, 68, 0.6);
+    background: linear-gradient(45deg, #ff6666, #ee0000);
+}
+
+.start-button:active {
+    transform: translateY(-2px) scale(1.02);
+}
+
+@keyframes startButtonGlow {
+    0%, 100% { 
+        box-shadow: 0 8px 25px rgba(255, 68, 68, 0.4);
+    }
+    50% { 
+        box-shadow: 0 8px 35px rgba(255, 68, 68, 0.7);
+    }
+}
+
+.start-instructions {
+    margin-top: 15px;
+    font-size: 0.9em;
+    opacity: 0.8;
+    animation: fadeInOut 3s ease-in-out infinite;
+}
+
+@keyframes fadeInOut {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+}
+
 .permission-status {
     margin-top: 15px;
     padding: 10px 20px;
