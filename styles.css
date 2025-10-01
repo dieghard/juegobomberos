@@ -611,6 +611,146 @@ body {
         box-shadow: 0 0 20px rgba(255, 235, 59, 0.6);
         transform: scale(1.02);
     }
+}
+
+/* Sección de Instalación PWA */
+.install-section {
+    margin: 40px 0;
+    opacity: 0;
+    transform: translateY(20px);
+    animation: installSlideIn 0.8s ease-out 1.2s forwards;
+}
+
+@keyframes installSlideIn {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.install-card {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(139, 195, 74, 0.2));
+    border: 3px solid #4caf50;
+    border-radius: 25px;
+    padding: 30px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    animation: installCardGlow 3s ease-in-out infinite;
+}
+
+@keyframes installCardGlow {
+    0%, 100% { 
+        box-shadow: 0 0 20px rgba(76, 175, 80, 0.3);
+    }
+    50% { 
+        box-shadow: 0 0 30px rgba(76, 175, 80, 0.6);
+    }
+}
+
+.install-icon {
+    font-size: 4em;
+    margin-bottom: 15px;
+    animation: installIconBounce 2s ease-in-out infinite;
+}
+
+@keyframes installIconBounce {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-10px) scale(1.1); }
+}
+
+.install-card h3 {
+    color: #4caf50;
+    font-size: 1.8em;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+}
+
+.install-card p {
+    color: #e0e0e0;
+    font-size: 1.1em;
+    margin-bottom: 25px;
+}
+
+.install-button {
+    background: linear-gradient(45deg, #4caf50, #8bc34a);
+    color: white;
+    border: none;
+    padding: 15px 35px;
+    border-radius: 50px;
+    font-size: 1.2em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 8px 25px rgba(76, 175, 80, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 0 auto 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+.install-button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 35px rgba(76, 175, 80, 0.6);
+    background: linear-gradient(45deg, #66bb6a, #9ccc65);
+}
+
+.install-button:active {
+    transform: translateY(-1px);
+}
+
+.install-btn-icon {
+    font-size: 1.3em;
+    animation: installDownload 2s ease-in-out infinite;
+}
+
+@keyframes installDownload {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(5px); }
+}
+
+.install-benefits {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-top: 15px;
+}
+
+.install-benefits span {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4caf50;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    font-weight: bold;
+    border: 2px solid rgba(76, 175, 80, 0.3);
+}
+
+/* Estado cuando la PWA ya está instalada */
+.install-section.installed .install-card {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.3), rgba(139, 195, 74, 0.3));
+    border-color: #66bb6a;
+}
+
+.install-section.installed .install-button {
+    background: linear-gradient(45deg, #66bb6a, #9ccc65);
+    cursor: not-allowed;
+}
+
+.install-section.installed .install-card h3::after {
+    content: " ✓";
+    color: #4caf50;
+}
+
+/* Ocultar sección de instalación cuando no está disponible */
+.install-section.hidden {
+    display: none;
 }/* Responsividad */
 @media (max-width: 480px) {
     #presentation-screen .title h1 {

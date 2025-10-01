@@ -32,6 +32,10 @@ let audioContext;
 let audioEnabled = false;
 let lastEngineSound = 0;
 
+// Variables PWA
+let deferredPrompt;
+let isInstalled = false;
+
 // Variables de efectos visuales
 let trees = [];
 let backgroundObjects = [];
@@ -59,6 +63,8 @@ document.addEventListener('DOMContentLoaded', () => {
     setupPermissionButton();
     setupMapControls();
     checkPermissionsOnLoad();
+    // Inicializar PWA
+    initPWA();
     // Solicitar ubicación después de un breve delay para mejor UX
     setTimeout(() => {
         requestLocationPermission();
@@ -301,6 +307,206 @@ function triggerVibration(pattern = [200]) {
     if ('vibrate' in navigator) {
         navigator.vibrate(pattern);
     }
+}
+
+// Sistema PWA
+function initPWA() {
+    const installSection = document.getElementById('install-section');
+    const installBtn = document.getElementById('install-btn');
+    
+    // Verificar si ya está instalada
+    checkIfInstalled();
+    
+    // Escuchar el evento beforeinstallprompt
+    window.addEventListener('beforeinstallprompt', (e) => {
+        console.log('PWA installation prompt triggered');
+        e.preventDefault();
+        deferredPrompt = e;
+        showInstallButton();
+    });
+    
+    // Configurar botón de instalación
+    installBtn.addEventListener('click', handleInstallClick);
+    
+    // Escuchar cuando la app se instala
+    window.addEventListener('appinstalled', (evt) => {
+        console.log('PWA was installed');
+        handleAppInstalled();
+    });
+    
+    // Verificar si el prompt está disponible después de un tiempo
+    setTimeout(() => {
+        if (!deferredPrompt && !isInstalled) {
+            // Si no hay prompt disponible, mostrar instrucciones manuales
+            showManualInstallInstructions();
+        }
+    }, 3000);
+}
+
+function checkIfInstalled() {
+    // Verificar si se ejecuta como PWA
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                  window.navigator.standalone === true ||
+                  document.referrer.includes('android-app://');
+    
+    if (isPWA) {
+        isInstalled = true;
+        handleAppInstalled();
+        return;
+    }
+    
+    // Verificar si ya fue instalada (localStorage)
+    if (localStorage.getItem('pwa-installed') === 'true') {
+        isInstalled = true;
+        handleAppInstalled();
+    }
+}
+
+function showInstallButton() {
+    const installSection = document.getElementById('install-section');
+    const installBtn = document.getElementById('install-btn');
+    
+    installSection.classList.remove('hidden');
+    installBtn.textContent = '⬇️ Instalar Autobomba';
+    
+    console.log('Botón de instalación mostrado');
+}
+
+function showManualInstallInstructions() {
+    const installSection = document.getElementById('install-section');
+    const installBtn = document.getElementById('install-btn');
+    const installCard = installSection.querySelector('.install-card');
+    
+    // Detectar navegador/dispositivo
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /Android/.test(navigator.userAgent);
+    
+    if (isIOS) {
+        installBtn.innerHTML = `
+            <span class="install-btn-icon">📱</span>
+            <span class="install-btn-text">Agregar a Inicio</span>
+        `;
+        installCard.querySelector('p').textContent = 
+            'Toca el botón de compartir en Safari y selecciona "Agregar a pantalla de inicio"';
+        
+        installBtn.addEventListener('click', () => {
+            alert('Para instalar en iOS:\n\n1. Toca el botón de compartir (📤) en Safari\n2. Desplázate y toca "Agregar a pantalla de inicio"\n3. Confirma la instalación');
+        });
+    } else if (isAndroid) {
+        installBtn.innerHTML = `
+            <span class="install-btn-icon">🤖</span>
+            <span class="install-btn-text">Instalar App</span>
+        `;
+        installCard.querySelector('p').textContent = 
+            'Busca "Agregar a pantalla de inicio" en el menú del navegador';
+        
+        installBtn.addEventListener('click', () => {
+            alert('Para instalar en Android:\n\n1. Toca el menú (⋮) del navegador\n2. Selecciona "Agregar a pantalla de inicio"\n3. Confirma la instalación');
+        });
+    } else {
+        installBtn.innerHTML = `
+            <span class="install-btn-icon">💻</span>
+            <span class="install-btn-text">Instalar App</span>
+        `;
+        installCard.querySelector('p').textContent = 
+            'Busca el ícono de instalación en la barra de direcciones del navegador';
+        
+        installBtn.addEventListener('click', () => {
+            alert('Para instalar en Desktop:\n\n1. Busca el ícono de instalación (📥) en la barra de direcciones\n2. O ve al menú del navegador\n3. Selecciona "Instalar Autobomba"');
+        });
+    }
+    
+    installSection.classList.remove('hidden');
+}
+
+async function handleInstallClick() {
+    if (!deferredPrompt) {
+        console.log('No hay prompt de instalación disponible');
+        return;
+    }
+    
+    const installBtn = document.getElementById('install-btn');
+    
+    // Cambiar estado del botón
+    installBtn.innerHTML = `
+        <span class="install-btn-icon">⏳</span>
+        <span class="install-btn-text">Instalando...</span>
+    `;
+    installBtn.disabled = true;
+    
+    try {
+        // Mostrar el prompt de instalación
+        deferredPrompt.prompt();
+        
+        // Esperar la respuesta del usuario
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`User response to install prompt: ${outcome}`);
+        
+        if (outcome === 'accepted') {
+            console.log('Usuario aceptó la instalación');
+            // handleAppInstalled se llamará automáticamente cuando se instale
+        } else {
+            console.log('Usuario rechazó la instalación');
+            // Restaurar botón
+            installBtn.innerHTML = `
+                <span class="install-btn-icon">⬇️</span>
+                <span class="install-btn-text">Instalar Autobomba</span>
+            `;
+            installBtn.disabled = false;
+        }
+        
+        // Limpiar el prompt
+        deferredPrompt = null;
+        
+    } catch (error) {
+        console.error('Error durante la instalación:', error);
+        // Restaurar botón en caso de error
+        installBtn.innerHTML = `
+            <span class="install-btn-icon">❌</span>
+            <span class="install-btn-text">Error al Instalar</span>
+        `;
+        
+        setTimeout(() => {
+            installBtn.innerHTML = `
+                <span class="install-btn-icon">⬇️</span>
+                <span class="install-btn-text">Instalar Autobomba</span>
+            `;
+            installBtn.disabled = false;
+        }, 3000);
+    }
+}
+
+function handleAppInstalled() {
+    const installSection = document.getElementById('install-section');
+    const installBtn = document.getElementById('install-btn');
+    const installCard = installSection.querySelector('.install-card');
+    
+    isInstalled = true;
+    localStorage.setItem('pwa-installed', 'true');
+    
+    // Actualizar UI para mostrar que está instalada
+    installSection.classList.add('installed');
+    installCard.querySelector('h3').textContent = '¡App Instalada!';
+    installCard.querySelector('p').textContent = 'La app está lista para usar desde tu pantalla de inicio';
+    
+    installBtn.innerHTML = `
+        <span class="install-btn-icon">✅</span>
+        <span class="install-btn-text">¡Instalada Correctamente!</span>
+    `;
+    installBtn.disabled = true;
+    
+    // Ocultar después de 5 segundos
+    setTimeout(() => {
+        installSection.style.transition = 'opacity 1s ease, transform 1s ease';
+        installSection.style.opacity = '0';
+        installSection.style.transform = 'translateY(-20px)';
+        
+        setTimeout(() => {
+            installSection.classList.add('hidden');
+        }, 1000);
+    }, 5000);
+    
+    console.log('PWA installation completed successfully');
 }
 
 // Sistema de Fondo Animado
