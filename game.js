@@ -67,6 +67,22 @@ let firetruck = {
 let fires = [];
 let particles = [];
 
+// Sistema de combos
+let comboCount = 0;
+let maxCombo = 0;
+let lastComboTime = 0;
+const COMBO_TIMEOUT = 2500; // ms para mantener combo activo
+
+// Power-ups
+let powerUps = [];
+const POWER_UP_TYPES = ['shield', 'water', 'slowmo'];
+let shieldActive = false;
+let shieldExpiresAt = 0;
+let slowMotionActive = false;
+let slowMotionExpiresAt = 0;
+let transientPowerUpMessage = '';
+let transientPowerUpExpiresAt = 0;
+
 // Inicialización
 document.addEventListener('DOMContentLoaded', () => {
     initGame();
@@ -982,6 +998,10 @@ function startGame() {
     gameSpeed = 1;
     fires = [];
     particles = [];
+    comboCount = 0;
+    maxCombo = 0;
+    lastComboTime = 0;
+    updateComboIndicator();
     
     // Resetear métricas de distancia
     totalDistance = 0;
@@ -1368,6 +1388,183 @@ function spawnFire() {
     }
 }
 
+function spawnPowerUp() {
+    if (gameState !== 'playing') return;
+
+    const type = POWER_UP_TYPES[Math.floor(Math.random() * POWER_UP_TYPES.length)];
+    const size = 32;
+
+    const powerUp = {
+        type,
+        x: Math.random() * (canvas.width - size),
+        y: -size,
+        width: size,
+        height: size,
+        speed: 1 + Math.random() * 1.5
+    };
+
+    powerUps.push(powerUp);
+}
+
+function updatePowerUps() {
+    if (gameState !== 'playing') return;
+
+    for (let i = powerUps.length - 1; i >= 0; i--) {
+        const powerUp = powerUps[i];
+        powerUp.y += powerUp.speed;
+
+        if (powerUp.y > canvas.height + powerUp.height) {
+            powerUps.splice(i, 1);
+            continue;
+        }
+
+        if (checkCollision(firetruck, powerUp)) {
+            applyPowerUp(powerUp.type);
+            powerUps.splice(i, 1);
+        }
+    }
+}
+
+function drawPowerUps() {
+    ctx.save();
+
+    powerUps.forEach((powerUp) => {
+        const centerX = powerUp.x + powerUp.width / 2;
+        const centerY = powerUp.y + powerUp.height / 2;
+
+        let gradient;
+        switch (powerUp.type) {
+            case 'shield':
+                gradient = ctx.createRadialGradient(centerX, centerY, 4, centerX, centerY, powerUp.width / 2);
+                gradient.addColorStop(0, 'rgba(129, 212, 250, 1)');
+                gradient.addColorStop(1, 'rgba(1, 87, 155, 0.3)');
+                break;
+            case 'water':
+                gradient = ctx.createRadialGradient(centerX, centerY, 4, centerX, centerY, powerUp.width / 2);
+                gradient.addColorStop(0, 'rgba(129, 199, 132, 1)');
+                gradient.addColorStop(1, 'rgba(27, 94, 32, 0.3)');
+                break;
+            case 'slowmo':
+            default:
+                gradient = ctx.createRadialGradient(centerX, centerY, 4, centerX, centerY, powerUp.width / 2);
+                gradient.addColorStop(0, 'rgba(255, 214, 0, 1)');
+                gradient.addColorStop(1, 'rgba(255, 171, 0, 0.3)');
+                break;
+        }
+
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, powerUp.width / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const icon = powerUp.type === 'shield' ? '🛡️' : powerUp.type === 'water' ? '💧' : '🐢';
+        ctx.fillText(icon, centerX, centerY);
+    });
+
+    ctx.restore();
+}
+
+function applyPowerUp(type) {
+    switch (type) {
+        case 'shield':
+            activateShield();
+            break;
+        case 'water':
+            activateWaterBlast();
+            break;
+        case 'slowmo':
+            activateSlowMotion();
+            break;
+        default:
+            break;
+    }
+}
+
+function activateShield() {
+    shieldActive = true;
+    shieldExpiresAt = Date.now() + 5000;
+    transientPowerUpMessage = '';
+    transientPowerUpExpiresAt = 0;
+    triggerVibration([80, 40, 80]);
+    updatePowerUpIndicatorDisplay();
+}
+
+function activateWaterBlast() {
+    if (fires.length > 0) {
+        for (let i = 0; i < fires.length; i++) {
+            createParticle(fires[i].x, fires[i].y, '0,150,255');
+        }
+        fires = [];
+        score += 50; // bonus por limpiar pantalla
+    }
+
+    transientPowerUpMessage = '💧 Bomba de agua activada';
+    transientPowerUpExpiresAt = Date.now() + 2000;
+    triggerVibration([120, 60, 40, 60]);
+    updatePowerUpIndicatorDisplay();
+}
+
+function activateSlowMotion() {
+    slowMotionActive = true;
+    slowMotionExpiresAt = Date.now() + 4000;
+    transientPowerUpMessage = '';
+    transientPowerUpExpiresAt = 0;
+    triggerVibration([50, 30, 50]);
+    updatePowerUpIndicatorDisplay();
+}
+
+function updatePowerUpIndicatorDisplay() {
+    const indicator = document.getElementById('powerup-indicator');
+    if (!indicator) return;
+
+    const now = Date.now();
+
+    if (shieldActive) {
+        const remaining = Math.max(0, Math.ceil((shieldExpiresAt - now) / 1000));
+        indicator.textContent = `🛡️ Escudo (${remaining}s)`;
+        indicator.classList.add('active');
+        return;
+    }
+
+    if (slowMotionActive) {
+        const remaining = Math.max(0, Math.ceil((slowMotionExpiresAt - now) / 1000));
+        indicator.textContent = `🐢 Tiempo bala (${remaining}s)`;
+        indicator.classList.add('active');
+        return;
+    }
+
+    if (transientPowerUpMessage && now < transientPowerUpExpiresAt) {
+        indicator.textContent = transientPowerUpMessage;
+        indicator.classList.add('active');
+        return;
+    }
+
+    indicator.classList.remove('active');
+}
+
+function updatePowerUpStatuses() {
+    const now = Date.now();
+
+    if (shieldActive && now > shieldExpiresAt) {
+        shieldActive = false;
+    }
+
+    if (slowMotionActive && now > slowMotionExpiresAt) {
+        slowMotionActive = false;
+    }
+
+    if (transientPowerUpMessage && now >= transientPowerUpExpiresAt) {
+        transientPowerUpMessage = '';
+    }
+
+    updatePowerUpIndicatorDisplay();
+}
+
 function updateFires() {
     if (gameState !== 'playing') return;
     
@@ -1378,13 +1575,17 @@ function updateFires() {
         // Remover fuegos que salieron de pantalla
         if (fire.y > canvas.height) {
             fires.splice(i, 1);
-            firesDodged++;
-            score += 10;
+            registerFireDodged(fire);
             continue;
         }
         
         // Verificar colisión con autobomba
         if (checkCollision(firetruck, fire)) {
+            if (shieldActive) {
+                createParticle(fire.x, fire.y, '129,212,250');
+                fires.splice(i, 1);
+                continue;
+            }
             gameOver();
             return;
         }
@@ -1409,6 +1610,67 @@ function createParticle(x, y, color) {
             maxLife: 50,
             color: color
         });
+    }
+}
+
+function registerFireDodged() {
+    firesDodged++;
+    score += 10;
+
+    comboCount++;
+    lastComboTime = Date.now();
+
+    if (comboCount > maxCombo) {
+        maxCombo = comboCount;
+    }
+
+    if (comboCount >= 2) {
+        triggerComboEffects(comboCount);
+    } else {
+        updateComboIndicator();
+    }
+}
+
+function resetCombo() {
+    comboCount = 0;
+    updateComboIndicator();
+}
+
+function updateComboIndicator() {
+    const indicator = document.getElementById('combo-indicator');
+    if (!indicator) return;
+
+    if (comboCount >= 2) {
+        indicator.textContent = `Combo x${comboCount}`;
+        indicator.classList.add('active');
+    } else {
+        indicator.textContent = 'Combo x0';
+        indicator.classList.remove('active');
+    }
+}
+
+function triggerComboEffects(comboLevel) {
+    updateComboIndicator();
+    spawnComboParticles(comboLevel);
+
+    if (comboLevel % 5 === 0) {
+        triggerVibration([120, 60, 120]);
+    }
+
+    const scorePanel = document.querySelector('.score');
+    if (scorePanel) {
+        scorePanel.classList.add('combo-flash');
+        setTimeout(() => scorePanel.classList.remove('combo-flash'), 300);
+    }
+}
+
+function spawnComboParticles(comboLevel) {
+    const bursts = Math.min(10, 3 + comboLevel);
+    const centerX = firetruck.x + firetruck.width / 2;
+    const centerY = firetruck.y + firetruck.height / 2;
+
+    for (let i = 0; i < bursts; i++) {
+        createParticle(centerX - firetruck.width / 2, centerY - firetruck.height / 2, '255,235,59');
     }
 }
 
@@ -1462,17 +1724,33 @@ function updateGameState() {
     timeElapsed = Math.floor((Date.now() - gameStartTime) / 1000);
     
     // Aumentar dificultad con el tiempo (progresión más gradual)
-    gameSpeed = 0.8 + timeElapsed * 0.03; // Comenzar más lento y progresar gradualmente
+    const baseSpeed = 0.8 + timeElapsed * 0.03;
+    const slowFactor = slowMotionActive ? 0.5 : 1;
+    gameSpeed = baseSpeed * slowFactor;
     
     // Spawning de fuegos más frecuente con el tiempo (menos agresivo inicialmente)
-    const spawnRate = Math.max(0.015, 0.05 - timeElapsed * 0.0008); // Comenzar con menos fuegos
+    const baseSpawnRate = Math.max(0.015, 0.05 - timeElapsed * 0.0008); // Comenzar con menos fuegos
+    const spawnRate = slowMotionActive ? baseSpawnRate * 0.6 : baseSpawnRate;
     if (Math.random() < spawnRate) {
         spawnFire();
+    }
+    
+    // Chance de generar power-ups ocasionalmente
+    if (Math.random() < 0.003) {
+        spawnPowerUp();
     }
     
     // Actualizar UI
     document.getElementById('score').textContent = score;
     document.getElementById('time').textContent = timeElapsed;
+
+    // Verificar expiración de combo
+    if (comboCount > 0 && Date.now() - lastComboTime > COMBO_TIMEOUT) {
+        resetCombo();
+    }
+
+    // Actualizar estado de power-ups activos
+    updatePowerUpStatuses();
 }
 
 function drawFiretruck() {
@@ -1704,6 +1982,8 @@ function render() {
     if (gameState === 'playing' || gameOverExplosion) {
         drawBackground();
         
+        drawPowerUps();
+
         // Dibujar fuegos
         fires.forEach(fire => drawFire(fire));
         
@@ -1724,6 +2004,7 @@ function gameLoop() {
     if (gameState === 'playing') {
         updateFiretruckPosition();
         updateFires();
+        updatePowerUps();
         updateParticles();
         updateGameState();
         updateBackground();
@@ -1789,6 +2070,7 @@ function gameOver() {
         document.getElementById('final-score').textContent = score;
         document.getElementById('final-time').textContent = timeElapsed + 's';
         document.getElementById('fires-dodged').textContent = firesDodged;
+    document.getElementById('max-combo').textContent = 'x' + Math.max(maxCombo, comboCount);
         document.getElementById('final-distance').textContent = totalDistance.toFixed(2) + ' km';
         document.getElementById('max-speed').textContent = Math.floor(maxSpeed) + ' km/h';
         
@@ -1803,6 +2085,7 @@ function gameOver() {
             firetruckOnFire = false;
             gameOverExplosion = false;
             explosionParticles = [];
+            resetCombo();
         }, 1000);
     }, 2000);
 }
@@ -1825,6 +2108,10 @@ function resetGame() {
     totalDistance = 0;
     currentSpeed = 0;
     maxSpeed = 0;
+    comboCount = 0;
+    maxCombo = 0;
+    lastComboTime = 0;
+    updateComboIndicator();
     
     // Limpiar countdown
     document.getElementById('countdown').textContent = '';

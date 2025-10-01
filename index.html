@@ -109,6 +109,9 @@
                 <div class="score">
                     <span>Puntos: <span id="score">0</span></span>
                 </div>
+                <div class="combo-indicator" id="combo-indicator">
+                    Combo x0
+                </div>
                 <div class="time">
                     <span>Tiempo: <span id="time">0</span>s</span>
                 </div>
@@ -132,6 +135,8 @@
         <div class="controls-hint">
             <p>🔄 Inclina tu dispositivo para mover la autobomba</p>
         </div>
+
+        <div class="powerup-indicator" id="powerup-indicator"></div>
     </div>
 
     <!-- Pantalla de Game Over -->
@@ -150,6 +155,10 @@
                 <div class="stat">
                     <span class="label">Fuegos Esquivados:</span>
                     <span class="value" id="fires-dodged">0</span>
+                </div>
+                <div class="stat">
+                    <span class="label">Combo Máximo:</span>
+                    <span class="value" id="max-combo">x0</span>
                 </div>
                 <div class="stat">
                     <span class="label">Distancia Recorrida:</span>
@@ -202,7 +211,7 @@
             <h1>🗺️ Ruta de la Misión</h1>
             
             <div class="map-container">
-                <div id="route-map" style="height: 400px; width: 100%; border-radius: 10px; overflow: hidden; border: 2px solid #444;">
+                <div id="route-map" class="route-map">
                     <!-- Leaflet map se cargará aquí -->
                 </div>
                 

@@ -305,7 +305,7 @@ body {
     background: linear-gradient(0deg, rgba(0,0,0,0.8) 0%, transparent 100%);
 }
 
-.score, .time, .speed, .location-info {
+.score, .time, .speed, .location-info, .combo-indicator {
     background: rgba(0,0,0,0.7);
     padding: 10px 15px;
     border-radius: 20px;
@@ -339,6 +339,40 @@ body {
     font-size: 0.9em;
 }
 
+.combo-indicator {
+    color: #ffeb3b;
+    border: 2px solid #ffeb3b;
+    opacity: 0;
+    transform: scale(0.9);
+    transition: opacity 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 0 0 rgba(255, 235, 59, 0.5);
+}
+
+.combo-indicator.active {
+    opacity: 1;
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(255, 235, 59, 0.5);
+}
+
+.combo-flash {
+    animation: comboFlash 0.35s ease;
+}
+
+@keyframes comboFlash {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 rgba(255, 235, 59, 0.4);
+    }
+    50% {
+        transform: scale(1.08);
+        box-shadow: 0 0 20px rgba(255, 235, 59, 0.6);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 rgba(255, 235, 59, 0.2);
+    }
+}
+
 #gameCanvas {
     width: 100%;
     height: 100%;
@@ -361,6 +395,31 @@ body {
 @keyframes hintFade {
     0%, 100% { opacity: 0.7; }
     50% { opacity: 1; }
+}
+
+.powerup-indicator {
+    position: absolute;
+    top: 90px;
+    right: 20px;
+    min-width: 200px;
+    padding: 12px 18px;
+    border-radius: 18px;
+    background: rgba(0, 0, 0, 0.75);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 0.95em;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: none;
+    text-align: center;
+}
+
+.powerup-indicator.active {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 /* Pantalla de Game Over */
@@ -471,6 +530,14 @@ body {
     margin: 30px 0;
     -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
+}
+
+.route-map {
+    height: 400px;
+    width: 100%;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 2px solid #444;
 }
 
 .map-placeholder {
@@ -636,8 +703,8 @@ body {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 15px;
     border: 2px solid rgba(255, 255, 255, 0.2);
-    backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
     animation: creditGlow 3s ease-in-out infinite;
 }
 
@@ -689,8 +756,8 @@ body {
     text-align: center;
     position: relative;
     overflow: hidden;
-    backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
     animation: installCardGlow 3s ease-in-out infinite;
 }
 
