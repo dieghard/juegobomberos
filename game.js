@@ -1,3 +1,15 @@
+import {
+    createHighscoreManager,
+    formatNumber,
+    formatTimeValue,
+    formatDistanceValue,
+    formatComboValue,
+    formatSpeedValue
+} from './src/systems/highscores.js';
+import { createComboSystem } from './src/systems/combos.js';
+import { createPowerUpSystem } from './src/systems/powerups.js';
+import { createExtremeSpeedAlert } from './src/systems/alerts.js';
+
 // Variables globales del juego
 let canvas, ctx;
 let gameState = 'presentation'; // presentation, countdown, playing, gameover, map
@@ -7,134 +19,124 @@ let timeElapsed = 0;
 let firesDodged = 0;
 let gameSpeed = 1;
 let animationId;
+let fires = [];
+let particles = [];
+let explosionParticles = [];
+let trees = [];
+let backgroundObjects = [];
 
-// Controles de teclado para pantallas grandes
-let keyboardControls = {
-    left: false,
-    right: false,
-    up: false,
-    down: false
+const firetruck = {
+    width: 60,
+    height: 90,
+    x: 0,
+    y: 0,
+    speed: 6,
+    lastSpeed: 0
 };
-let isLargeScreen = false;
-let useKeyboardControls = false;
 
-// Variables de distancia y velocidad
-let totalDistance = 0;
-let currentSpeed = 0;
-let maxSpeed = 0;
-let lastSpeedUpdate = 0;
-
-// Variables de dispositivo y controles
-let deviceOrientation = { beta: 0, gamma: 0 };
-let lastShakeTime = 0;
-let shakeThreshold = 15;
-let lastAcceleration = { x: 0, y: 0, z: 0 };
-
-// Variables de geolocación mejoradas
-let currentLocation = { lat: null, lng: null, accuracy: null };
-let startLocation = { lat: null, lng: null, name: "Punto de inicio" };
-let endLocation = { lat: null, lng: null, name: "Punto final" };
-let locationName = "Ubicación desconocida";
-let watchPositionId = null;
-
-// Variables de audio
 let audioContext;
 let audioEnabled = false;
 let lastEngineSound = 0;
 
-// Variables PWA
-let deferredPrompt;
-let isInstalled = false;
+let useKeyboardControls = false;
+let isLargeScreen = false;
+const keyboardControls = { left: false, right: false, up: false, down: false };
 
-// Variables de efectos visuales
-let trees = [];
-let backgroundObjects = [];
-let explosionParticles = [];
+const deviceOrientation = { beta: 0, gamma: 0 };
+let lastAcceleration = { x: 0, y: 0, z: 0 };
+let lastShakeTime = 0;
+const shakeThreshold = 18;
+
+let totalDistance = 0;
+let currentSpeed = 0;
+let maxSpeed = 0;
+let lastSpeedUpdate = Date.now();
+
 let firetruckOnFire = false;
 let gameOverExplosion = false;
 
-// Variables del juego
-let firetruck = {
-    x: 0,
-    y: 0,
-    width: 60,
-    height: 40,
-    speed: 5,
-    maxSpeed: 8,
-    lastSpeed: 0
-};
+let watchPositionId = null;
+const currentLocation = { lat: null, lng: null, accuracy: null, lastLocationUpdate: null };
+let locationName = 'Selva del Pacífico';
+let startLocation = { lat: null, lng: null, name: 'Sin GPS al inicio' };
+let endLocation = { lat: null, lng: null, name: 'Sin GPS al final' };
 
-let fires = [];
-let particles = [];
+let deferredPrompt = null;
+let isInstalled = false;
 
-// Sistema de combos
-let comboCount = 0;
-let maxCombo = 0;
-let lastComboTime = 0;
-const COMBO_TIMEOUT = 2500; // ms para mantener combo activo
+let comboSystem;
+let powerUpSystem;
+let highscoreManager;
+let extremeSpeedAlert;
 
-// Power-ups
-let powerUps = [];
-const POWER_UP_TYPES = ['shield', 'water', 'slowmo'];
-let shieldActive = false;
-let shieldExpiresAt = 0;
-let slowMotionActive = false;
-let slowMotionExpiresAt = 0;
-let transientPowerUpMessage = '';
-let transientPowerUpExpiresAt = 0;
+function initializeSystems() {
+    highscoreManager = createHighscoreManager();
+    highscoreManager.load();
 
-// Inicialización
-document.addEventListener('DOMContentLoaded', () => {
-    initGame();
+    comboSystem = createComboSystem({
+        indicatorElement: document.getElementById('combo-indicator'),
+        scorePanelElement: document.querySelector('.score'),
+        firetruck,
+        createParticle,
+        triggerVibration
+    });
+    comboSystem.reset();
+
+    powerUpSystem = createPowerUpSystem({
+        indicatorElement: document.getElementById('powerup-indicator'),
+        fires,
+        firetruck,
+        triggerVibration,
+        createTone,
+        createParticle,
+        onScoreBonus: (bonus) => {
+            score += bonus;
+        }
+    });
+    powerUpSystem.reset();
+
+    extremeSpeedAlert = createExtremeSpeedAlert({
+        bannerElement: document.getElementById('extreme-banner'),
+        triggerVibration,
+        createTone
+    });
+    extremeSpeedAlert.reset();
+}
+
+function bootstrapGame() {
+    initializeSystems();
     setupPermissionButton();
-    setupMapControls();
-    setupStartButton(); // Agregar configuración del botón de inicio
     checkPermissionsOnLoad();
-    
-    // Detectar tipo de pantalla y configurar controles
+    requestLocationPermission();
     detectScreenSize();
     setupKeyboardControls();
-    
-    // Actualizar controles cuando cambie el tamaño de pantalla
     window.addEventListener('resize', detectScreenSize);
-    
-    // Inicializar PWA
+    setupMapControls();
     initPWA();
-    // Solicitar ubicación después de un breve delay para mejor UX
-    setTimeout(() => {
-        requestLocationPermission();
-    }, 1000);
-});
 
-// Configurar botón de inicio del juego
-function setupStartButton() {
-    const startBtn = document.getElementById('start-game-btn');
-    const controlInstructions = document.getElementById('control-instructions');
-    
-    if (startBtn) {
-        startBtn.addEventListener('click', () => {
-            console.log('Botón de inicio clickeado');
+    const startButton = document.getElementById('start-game-btn');
+    if (startButton) {
+        startButton.addEventListener('click', () => {
+            requestLocationOnInteraction();
             handleShake();
         });
-        
-        // También permitir inicio con teclas
-        document.addEventListener('keydown', (event) => {
-            if (gameState === 'presentation') {
-                if (event.key === 'Enter' || event.key === ' ' || 
-                    event.key === 'ArrowUp' || event.key === 'ArrowDown' || 
-                    event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-                    event.preventDefault();
-                    console.log('Tecla presionada para iniciar:', event.key);
-                    handleShake();
-                }
-            }
-        });
-        
-        // Actualizar instrucciones según el tipo de dispositivo
-        if (isLargeScreen && useKeyboardControls) {
-            controlInstructions.textContent = 'Presiona ENTER, ESPACIO o cualquier flecha para comenzar';
-        }
     }
+
+    document.addEventListener('keydown', (event) => {
+        if (gameState === 'presentation' && ['Enter', ' ', 'Spacebar', 'Space'].includes(event.key)) {
+            event.preventDefault();
+            requestLocationOnInteraction();
+            handleShake();
+        }
+    });
+
+    initGame();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrapGame);
+} else {
+    bootstrapGame();
 }
 
 function setupPermissionButton() {
@@ -996,23 +998,24 @@ function startGame() {
     timeElapsed = 0;
     firesDodged = 0;
     gameSpeed = 1;
-    fires = [];
-    particles = [];
-    comboCount = 0;
-    maxCombo = 0;
-    lastComboTime = 0;
-    updateComboIndicator();
+    fires.length = 0;
+    particles.length = 0;
+    explosionParticles.length = 0;
+    comboSystem?.reset();
+    powerUpSystem?.reset();
+    extremeSpeedAlert?.reset();
     
     // Resetear métricas de distancia
     totalDistance = 0;
     currentSpeed = 0;
     maxSpeed = 0;
     lastSpeedUpdate = Date.now();
+    firetruck.lastSpeed = 0;
     
     // Resetear efectos visuales
     firetruckOnFire = false;
     gameOverExplosion = false;
-    explosionParticles = [];
+    explosionParticles.length = 0;
     
     // Guardar ubicación de inicio con nombre actual
     if (currentLocation.lat && currentLocation.lng) {
@@ -1388,202 +1391,27 @@ function spawnFire() {
     }
 }
 
-function spawnPowerUp() {
-    if (gameState !== 'playing') return;
-
-    const type = POWER_UP_TYPES[Math.floor(Math.random() * POWER_UP_TYPES.length)];
-    const size = 32;
-
-    const powerUp = {
-        type,
-        x: Math.random() * (canvas.width - size),
-        y: -size,
-        width: size,
-        height: size,
-        speed: 1 + Math.random() * 1.5
-    };
-
-    powerUps.push(powerUp);
-}
-
-function updatePowerUps() {
-    if (gameState !== 'playing') return;
-
-    for (let i = powerUps.length - 1; i >= 0; i--) {
-        const powerUp = powerUps[i];
-        powerUp.y += powerUp.speed;
-
-        if (powerUp.y > canvas.height + powerUp.height) {
-            powerUps.splice(i, 1);
-            continue;
-        }
-
-        if (checkCollision(firetruck, powerUp)) {
-            applyPowerUp(powerUp.type);
-            powerUps.splice(i, 1);
-        }
-    }
-}
-
-function drawPowerUps() {
-    ctx.save();
-
-    powerUps.forEach((powerUp) => {
-        const centerX = powerUp.x + powerUp.width / 2;
-        const centerY = powerUp.y + powerUp.height / 2;
-
-        let gradient;
-        switch (powerUp.type) {
-            case 'shield':
-                gradient = ctx.createRadialGradient(centerX, centerY, 4, centerX, centerY, powerUp.width / 2);
-                gradient.addColorStop(0, 'rgba(129, 212, 250, 1)');
-                gradient.addColorStop(1, 'rgba(1, 87, 155, 0.3)');
-                break;
-            case 'water':
-                gradient = ctx.createRadialGradient(centerX, centerY, 4, centerX, centerY, powerUp.width / 2);
-                gradient.addColorStop(0, 'rgba(129, 199, 132, 1)');
-                gradient.addColorStop(1, 'rgba(27, 94, 32, 0.3)');
-                break;
-            case 'slowmo':
-            default:
-                gradient = ctx.createRadialGradient(centerX, centerY, 4, centerX, centerY, powerUp.width / 2);
-                gradient.addColorStop(0, 'rgba(255, 214, 0, 1)');
-                gradient.addColorStop(1, 'rgba(255, 171, 0, 0.3)');
-                break;
-        }
-
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, powerUp.width / 2, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = 'rgba(255,255,255,0.9)';
-        ctx.font = 'bold 16px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-
-        const icon = powerUp.type === 'shield' ? '🛡️' : powerUp.type === 'water' ? '💧' : '🐢';
-        ctx.fillText(icon, centerX, centerY);
-    });
-
-    ctx.restore();
-}
-
-function applyPowerUp(type) {
-    switch (type) {
-        case 'shield':
-            activateShield();
-            break;
-        case 'water':
-            activateWaterBlast();
-            break;
-        case 'slowmo':
-            activateSlowMotion();
-            break;
-        default:
-            break;
-    }
-}
-
-function activateShield() {
-    shieldActive = true;
-    shieldExpiresAt = Date.now() + 5000;
-    transientPowerUpMessage = '';
-    transientPowerUpExpiresAt = 0;
-    triggerVibration([80, 40, 80]);
-    updatePowerUpIndicatorDisplay();
-}
-
-function activateWaterBlast() {
-    if (fires.length > 0) {
-        for (let i = 0; i < fires.length; i++) {
-            createParticle(fires[i].x, fires[i].y, '0,150,255');
-        }
-        fires = [];
-        score += 50; // bonus por limpiar pantalla
-    }
-
-    transientPowerUpMessage = '💧 Bomba de agua activada';
-    transientPowerUpExpiresAt = Date.now() + 2000;
-    triggerVibration([120, 60, 40, 60]);
-    updatePowerUpIndicatorDisplay();
-}
-
-function activateSlowMotion() {
-    slowMotionActive = true;
-    slowMotionExpiresAt = Date.now() + 4000;
-    transientPowerUpMessage = '';
-    transientPowerUpExpiresAt = 0;
-    triggerVibration([50, 30, 50]);
-    updatePowerUpIndicatorDisplay();
-}
-
-function updatePowerUpIndicatorDisplay() {
-    const indicator = document.getElementById('powerup-indicator');
-    if (!indicator) return;
-
-    const now = Date.now();
-
-    if (shieldActive) {
-        const remaining = Math.max(0, Math.ceil((shieldExpiresAt - now) / 1000));
-        indicator.textContent = `🛡️ Escudo (${remaining}s)`;
-        indicator.classList.add('active');
-        return;
-    }
-
-    if (slowMotionActive) {
-        const remaining = Math.max(0, Math.ceil((slowMotionExpiresAt - now) / 1000));
-        indicator.textContent = `🐢 Tiempo bala (${remaining}s)`;
-        indicator.classList.add('active');
-        return;
-    }
-
-    if (transientPowerUpMessage && now < transientPowerUpExpiresAt) {
-        indicator.textContent = transientPowerUpMessage;
-        indicator.classList.add('active');
-        return;
-    }
-
-    indicator.classList.remove('active');
-}
-
-function updatePowerUpStatuses() {
-    const now = Date.now();
-
-    if (shieldActive && now > shieldExpiresAt) {
-        shieldActive = false;
-    }
-
-    if (slowMotionActive && now > slowMotionExpiresAt) {
-        slowMotionActive = false;
-    }
-
-    if (transientPowerUpMessage && now >= transientPowerUpExpiresAt) {
-        transientPowerUpMessage = '';
-    }
-
-    updatePowerUpIndicatorDisplay();
-}
 
 function updateFires() {
     if (gameState !== 'playing') return;
     
     for (let i = fires.length - 1; i >= 0; i--) {
         const fire = fires[i];
-        fire.y += fire.speed;
+        const speedMultiplier = powerUpSystem ? powerUpSystem.getSlowMotionFireFactor() : 1;
+        fire.y += fire.speed * speedMultiplier;
         
         // Remover fuegos que salieron de pantalla
         if (fire.y > canvas.height) {
             fires.splice(i, 1);
-            registerFireDodged(fire);
+            firesDodged++;
+            score += 10;
+            comboSystem?.registerDodge();
             continue;
         }
         
         // Verificar colisión con autobomba
         if (checkCollision(firetruck, fire)) {
-            if (shieldActive) {
-                createParticle(fire.x, fire.y, '129,212,250');
-                fires.splice(i, 1);
+            if (powerUpSystem && powerUpSystem.absorbFire(fire, fires, i)) {
                 continue;
             }
             gameOver();
@@ -1613,66 +1441,7 @@ function createParticle(x, y, color) {
     }
 }
 
-function registerFireDodged() {
-    firesDodged++;
-    score += 10;
 
-    comboCount++;
-    lastComboTime = Date.now();
-
-    if (comboCount > maxCombo) {
-        maxCombo = comboCount;
-    }
-
-    if (comboCount >= 2) {
-        triggerComboEffects(comboCount);
-    } else {
-        updateComboIndicator();
-    }
-}
-
-function resetCombo() {
-    comboCount = 0;
-    updateComboIndicator();
-}
-
-function updateComboIndicator() {
-    const indicator = document.getElementById('combo-indicator');
-    if (!indicator) return;
-
-    if (comboCount >= 2) {
-        indicator.textContent = `Combo x${comboCount}`;
-        indicator.classList.add('active');
-    } else {
-        indicator.textContent = 'Combo x0';
-        indicator.classList.remove('active');
-    }
-}
-
-function triggerComboEffects(comboLevel) {
-    updateComboIndicator();
-    spawnComboParticles(comboLevel);
-
-    if (comboLevel % 5 === 0) {
-        triggerVibration([120, 60, 120]);
-    }
-
-    const scorePanel = document.querySelector('.score');
-    if (scorePanel) {
-        scorePanel.classList.add('combo-flash');
-        setTimeout(() => scorePanel.classList.remove('combo-flash'), 300);
-    }
-}
-
-function spawnComboParticles(comboLevel) {
-    const bursts = Math.min(10, 3 + comboLevel);
-    const centerX = firetruck.x + firetruck.width / 2;
-    const centerY = firetruck.y + firetruck.height / 2;
-
-    for (let i = 0; i < bursts; i++) {
-        createParticle(centerX - firetruck.width / 2, centerY - firetruck.height / 2, '255,235,59');
-    }
-}
 
 function createExplosionParticles(x, y) {
     // Crear muchas partículas para la explosión
@@ -1725,36 +1494,43 @@ function updateGameState() {
     
     // Aumentar dificultad con el tiempo (progresión más gradual)
     const baseSpeed = 0.8 + timeElapsed * 0.03;
-    const slowFactor = slowMotionActive ? 0.5 : 1;
+    const slowFactor = powerUpSystem ? powerUpSystem.getSlowMotionGameFactor() : 1;
     gameSpeed = baseSpeed * slowFactor;
     
     // Spawning de fuegos más frecuente con el tiempo (menos agresivo inicialmente)
     const baseSpawnRate = Math.max(0.015, 0.05 - timeElapsed * 0.0008); // Comenzar con menos fuegos
-    const spawnRate = slowMotionActive ? baseSpawnRate * 0.6 : baseSpawnRate;
+    const spawnRate = (powerUpSystem && powerUpSystem.isSlowMotionActive()) ? baseSpawnRate * 0.6 : baseSpawnRate;
     if (Math.random() < spawnRate) {
         spawnFire();
     }
     
     // Chance de generar power-ups ocasionalmente
-    if (Math.random() < 0.003) {
-        spawnPowerUp();
-    }
+    powerUpSystem?.maybeSpawn(canvas.width);
     
     // Actualizar UI
     document.getElementById('score').textContent = score;
     document.getElementById('time').textContent = timeElapsed;
 
-    // Verificar expiración de combo
-    if (comboCount > 0 && Date.now() - lastComboTime > COMBO_TIMEOUT) {
-        resetCombo();
-    }
-
-    // Actualizar estado de power-ups activos
-    updatePowerUpStatuses();
+    comboSystem?.update();
+    extremeSpeedAlert?.update(gameSpeed);
 }
 
 function drawFiretruck() {
     ctx.save();
+
+    if (powerUpSystem && powerUpSystem.isShieldActive()) {
+        const pulse = 0.7 + Math.sin(Date.now() * 0.01) * 0.15;
+        const centerX = firetruck.x + firetruck.width / 2;
+        const centerY = firetruck.y + firetruck.height / 2;
+        const radius = Math.max(firetruck.width, firetruck.height) * 0.85;
+        const gradient = ctx.createRadialGradient(centerX, centerY, radius * 0.2, centerX, centerY, radius);
+        gradient.addColorStop(0, `rgba(129,212,250,${0.35 * pulse})`);
+        gradient.addColorStop(1, 'rgba(1,87,155,0)');
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.fill();
+    }
     
     // Sombra
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
@@ -1981,8 +1757,8 @@ function render() {
     
     if (gameState === 'playing' || gameOverExplosion) {
         drawBackground();
-        
-        drawPowerUps();
+
+        powerUpSystem?.draw(ctx);
 
         // Dibujar fuegos
         fires.forEach(fire => drawFire(fire));
@@ -1992,7 +1768,9 @@ function render() {
         
         // Dibujar partículas
         drawParticles();
-        
+
+        powerUpSystem?.drawSlowMotionOverlay(ctx, canvas);
+
         // Dibujar partículas de explosión si están activas
         if (gameOverExplosion) {
             drawExplosionParticles();
@@ -2004,7 +1782,7 @@ function gameLoop() {
     if (gameState === 'playing') {
         updateFiretruckPosition();
         updateFires();
-        updatePowerUps();
+        powerUpSystem?.update(canvas.height, checkCollision);
         updateParticles();
         updateGameState();
         updateBackground();
@@ -2021,6 +1799,9 @@ function gameLoop() {
 
 function gameOver() {
     gameState = 'gameover';
+
+    powerUpSystem?.reset();
+    extremeSpeedAlert?.reset();
     
     // Efectos de game over
     playExplosionSound();
@@ -2067,25 +1848,37 @@ function gameOver() {
         document.getElementById('gameover-screen').classList.add('active');
         
         // Actualizar estadísticas finales
-        document.getElementById('final-score').textContent = score;
-        document.getElementById('final-time').textContent = timeElapsed + 's';
-        document.getElementById('fires-dodged').textContent = firesDodged;
-    document.getElementById('max-combo').textContent = 'x' + Math.max(maxCombo, comboCount);
-        document.getElementById('final-distance').textContent = totalDistance.toFixed(2) + ' km';
-        document.getElementById('max-speed').textContent = Math.floor(maxSpeed) + ' km/h';
+    const finalComboValue = comboSystem ? comboSystem.getPeakCombo() : 0;
+        const finalDistanceValue = parseFloat(totalDistance.toFixed(2));
+        const finalSpeedValue = Math.floor(maxSpeed);
+
+        document.getElementById('final-score').textContent = formatNumber(score);
+        document.getElementById('final-time').textContent = formatTimeValue(timeElapsed);
+        document.getElementById('fires-dodged').textContent = formatNumber(firesDodged);
+        document.getElementById('max-combo').textContent = formatComboValue(finalComboValue);
+        document.getElementById('final-distance').textContent = formatDistanceValue(finalDistanceValue);
+        document.getElementById('max-speed').textContent = formatSpeedValue(finalSpeedValue);
         
         // Actualizar información de ubicación
         document.getElementById('start-location').textContent = startLocation.name;
         document.getElementById('end-location').textContent = endLocation.name;
         
         console.log('Game over - Ubicaciones:', { start: startLocation.name, end: endLocation.name });
+
+        highscoreManager.evaluate({
+            finalScore: score,
+            finalTime: timeElapsed,
+            finalDistance: finalDistanceValue,
+            finalCombo: finalComboValue,
+            finalSpeed: finalSpeedValue
+        });
         
         // Resetear efectos visuales después de mostrar la pantalla
         setTimeout(() => {
             firetruckOnFire = false;
             gameOverExplosion = false;
-            explosionParticles = [];
-            resetCombo();
+            explosionParticles.length = 0;
+            comboSystem?.reset();
         }, 1000);
     }, 2000);
 }
@@ -2103,15 +1896,15 @@ function resetGame() {
     timeElapsed = 0;
     firesDodged = 0;
     gameSpeed = 1;
-    fires = [];
-    particles = [];
+    fires.length = 0;
+    particles.length = 0;
     totalDistance = 0;
     currentSpeed = 0;
     maxSpeed = 0;
-    comboCount = 0;
-    maxCombo = 0;
-    lastComboTime = 0;
-    updateComboIndicator();
+    firetruck.lastSpeed = 0;
+    comboSystem?.reset();
+    powerUpSystem?.reset();
+    extremeSpeedAlert?.reset();
     
     // Limpiar countdown
     document.getElementById('countdown').textContent = '';
@@ -2140,9 +1933,9 @@ function showMapScreen() {
     document.getElementById('map-screen').classList.add('active');
     
     // Actualizar estadísticas del mapa
-    document.getElementById('map-distance').textContent = totalDistance.toFixed(2) + ' km';
-    document.getElementById('map-time').textContent = timeElapsed + 's';
-    document.getElementById('map-score').textContent = score;
+    document.getElementById('map-distance').textContent = formatDistanceValue(parseFloat(totalDistance.toFixed(2)));
+    document.getElementById('map-time').textContent = formatTimeValue(timeElapsed);
+    document.getElementById('map-score').textContent = formatNumber(score);
     
     // Visualizar ruta
     visualizeRoute();

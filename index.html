@@ -47,6 +47,35 @@
                 </div>
             </div>
 
+            <div class="highscore-panel" id="highscore-panel">
+                <h3>🏆 Records locales</h3>
+                <div class="highscore-grid">
+                    <div class="highscore-item">
+                        <span class="highscore-label">Mejor puntuación</span>
+                        <span class="highscore-value" id="best-score">0</span>
+                    </div>
+                    <div class="highscore-item">
+                        <span class="highscore-label">Mayor tiempo</span>
+                        <span class="highscore-value" id="best-time">0s</span>
+                    </div>
+                    <div class="highscore-item">
+                        <span class="highscore-label">Mayor distancia</span>
+                        <span class="highscore-value" id="best-distance">0 km</span>
+                    </div>
+                    <div class="highscore-item">
+                        <span class="highscore-label">Combo máximo</span>
+                        <span class="highscore-value" id="best-combo">x0</span>
+                    </div>
+                    <div class="highscore-item">
+                        <span class="highscore-label">Velocidad máxima</span>
+                        <span class="highscore-value" id="best-speed">0 km/h</span>
+                    </div>
+                </div>
+                <div class="highscore-footer">
+                    Partidas jugadas: <span id="runs-played">0</span>
+                </div>
+            </div>
+
             <!-- Botón de Instalación PWA -->
             <div class="install-section" id="install-section">
                 <div class="install-card">
@@ -71,7 +100,7 @@
                 <div class="countdown" id="countdown"></div>
                 
                 <!-- Botón para solicitar permisos manualmente (especialmente para iOS) -->
-                <button id="permission-btn" class="permission-button" style="display: none;">
+                <button id="permission-btn" class="permission-button">
                     🔓 Permitir Sensores
                 </button>
                 <div id="permission-status" class="permission-status"></div>
@@ -85,7 +114,7 @@
             <div class="location-status" id="location-status">
                 <span class="icon">📍</span>
                 <span id="location-text">Preparando ubicación...</span>
-                <button id="location-btn" class="permission-button" style="display: none; margin-top: 10px; padding: 8px 16px; font-size: 0.9em;">
+                <button id="location-btn" class="permission-button permission-button--compact">
                     📍 Permitir Ubicación
                 </button>
             </div>
@@ -137,6 +166,7 @@
         </div>
 
         <div class="powerup-indicator" id="powerup-indicator"></div>
+        <div class="extreme-banner" id="extreme-banner" aria-hidden="true">🔥 Incendio extremo</div>
     </div>
 
     <!-- Pantalla de Game Over -->
@@ -167,6 +197,30 @@
                 <div class="stat">
                     <span class="label">Velocidad Máxima:</span>
                     <span class="value" id="max-speed">0 km/h</span>
+                </div>
+            </div>
+
+            <div class="record-flags" id="record-flags"></div>
+
+            <div class="highscore-summary">
+                <h3>🏅 Records guardados</h3>
+                <div class="highscore-grid">
+                    <div class="highscore-item small">
+                        <span class="highscore-label">Mejor puntuación</span>
+                        <span class="highscore-value" id="best-score-summary">0</span>
+                    </div>
+                    <div class="highscore-item small">
+                        <span class="highscore-label">Mayor tiempo</span>
+                        <span class="highscore-value" id="best-time-summary">0s</span>
+                    </div>
+                    <div class="highscore-item small">
+                        <span class="highscore-label">Mayor distancia</span>
+                        <span class="highscore-value" id="best-distance-summary">0 km</span>
+                    </div>
+                    <div class="highscore-item small">
+                        <span class="highscore-label">Combo máximo</span>
+                        <span class="highscore-value" id="best-combo-summary">x0</span>
+                    </div>
                 </div>
             </div>
             
@@ -263,7 +317,7 @@
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
         crossorigin=""></script>
         
-    <script src="game.js"></script>
+    <script type="module" src="game.js"></script>
     <script>
         // Registrar el Service Worker
         if ('serviceWorker' in navigator) {
