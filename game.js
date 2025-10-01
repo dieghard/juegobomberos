@@ -527,7 +527,7 @@ function initBackground() {
 
 function createTree() {
     return {
-        x: Math.random() * canvas.width,
+        x: canvas.width + 50 + Math.random() * 200, // Aparecen a la derecha
         y: Math.random() * canvas.height,
         size: 20 + Math.random() * 40,
         type: Math.floor(Math.random() * 3), // 3 tipos de árboles
@@ -538,7 +538,7 @@ function createTree() {
 
 function createBackgroundObject() {
     return {
-        x: Math.random() * canvas.width,
+        x: canvas.width + 50 + Math.random() * 100, // Aparecen a la derecha
         y: Math.random() * canvas.height,
         size: 10 + Math.random() * 20,
         type: Math.floor(Math.random() * 2), // rocas y arbustos
@@ -549,26 +549,26 @@ function createBackgroundObject() {
 function updateBackground() {
     if (gameState !== 'playing') return;
     
-    // Mover árboles hacia abajo para simular movimiento
+    // Mover árboles de derecha a izquierda para simular movimiento horizontal
     for (let i = trees.length - 1; i >= 0; i--) {
         const tree = trees[i];
-        tree.y += tree.speed * gameSpeed;
+        tree.x -= tree.speed * gameSpeed; // Movimiento horizontal (derecha a izquierda)
         
-        // Si sale de la pantalla, reposicionar arriba
-        if (tree.y > canvas.height + tree.size) {
-            tree.y = -tree.size;
-            tree.x = Math.random() * canvas.width;
+        // Si sale de la pantalla por la izquierda, reposicionar a la derecha
+        if (tree.x + tree.size < -50) {
+            tree.x = canvas.width + 50 + Math.random() * 200;
+            tree.y = Math.random() * canvas.height;
         }
     }
     
-    // Mover objetos de fondo
+    // Mover objetos de fondo horizontalmente también
     for (let i = backgroundObjects.length - 1; i >= 0; i--) {
         const obj = backgroundObjects[i];
-        obj.y += obj.speed * gameSpeed;
+        obj.x -= obj.speed * gameSpeed; // Movimiento horizontal
         
-        if (obj.y > canvas.height + obj.size) {
-            obj.y = -obj.size;
-            obj.x = Math.random() * canvas.width;
+        if (obj.x + obj.size < -50) {
+            obj.x = canvas.width + 50 + Math.random() * 100;
+            obj.y = Math.random() * canvas.height;
         }
     }
 }
@@ -1633,7 +1633,13 @@ function showMapScreen() {
 function visualizeRoute() {
     console.log('Visualizando ruta:', { startLocation, endLocation });
     
-    if (!startLocation.lat || !endLocation.lat) {
+    // Verificar si tenemos datos GPS reales
+    const hasStartData = startLocation && startLocation.lat !== null && startLocation.lng !== null;
+    const hasEndData = endLocation && endLocation.lat !== null && endLocation.lng !== null;
+    
+    console.log('Datos GPS disponibles:', { hasStartData, hasEndData });
+    
+    if (!hasStartData && !hasEndData) {
         console.log('No hay datos de ubicación suficientes para mostrar ruta');
         
         // Mostrar mensaje de error en el mapa
@@ -1654,13 +1660,37 @@ function visualizeRoute() {
         return;
     }
     
+    // Si tenemos al menos una ubicación, usar datos disponibles
+    let startLat, startLng, endLat, endLng;
+    
+    if (hasStartData) {
+        startLat = startLocation.lat;
+        startLng = startLocation.lng;
+    } else {
+        // Usar ubicación actual como inicio si no hay datos de inicio
+        startLat = currentLocation.lat || 0;
+        startLng = currentLocation.lng || 0;
+    }
+    
+    if (hasEndData) {
+        endLat = endLocation.lat;
+        endLng = endLocation.lng;
+    } else {
+        // Usar ubicación actual como fin si no hay datos de fin
+        endLat = currentLocation.lat || 0;
+        endLng = currentLocation.lng || 0;
+    }
+    
+    // Si no hay movimiento real, simular una ruta pequeña
+    if (startLat === endLat && startLng === endLng) {
+        endLat += 0.001; // Agregar pequeño desplazamiento
+        endLng += 0.001;
+    }
+    
     // Calcular la diferencia de coordenadas
-    const deltaLat = endLocation.lat - startLocation.lat;
-    const deltaLng = endLocation.lng - startLocation.lng;
-    const totalDistance = calculateDistance(
-        startLocation.lat, startLocation.lng,
-        endLocation.lat, endLocation.lng
-    );
+    const deltaLat = endLat - startLat;
+    const deltaLng = endLng - startLng;
+    const totalDistance = calculateDistance(startLat, startLng, endLat, endLng);
     
     console.log('Deltas calculados:', { deltaLat, deltaLng, totalDistance });
     
@@ -1673,12 +1703,11 @@ function visualizeRoute() {
     const maxDistance = 200;
     
     let scale;
-    if (totalDistance > 0) {
-        // Escala basada en la distancia real
-        scale = Math.max(minDistance, Math.min(maxDistance, totalDistance * 10000));
+    if (totalDistance > 0.001) { // Si hay movimiento real
+        scale = Math.max(minDistance, Math.min(maxDistance, totalDistance * 50000));
     } else {
-        // Si no hay movimiento, simular una ruta pequeña
-        scale = minDistance;
+        // Si no hay movimiento, usar escala fija
+        scale = minDistance * 2;
     }
     
     const pixelDeltaX = deltaLng * scale;
