@@ -24,6 +24,7 @@ let particles = [];
 let explosionParticles = [];
 let trees = [];
 let backgroundObjects = [];
+let groundFires = [];
 
 const firetruck = {
     width: 60,
@@ -46,6 +47,8 @@ const deviceOrientation = { beta: 0, gamma: 0 };
 let lastAcceleration = { x: 0, y: 0, z: 0 };
 let lastShakeTime = 0;
 const shakeThreshold = 18;
+const GROUND_FIRE_DURATION = 2800;
+const GROUND_FIRE_FLASH_DURATION = 650;
 
 let totalDistance = 0;
 let currentSpeed = 0;
@@ -68,6 +71,9 @@ let comboSystem;
 let powerUpSystem;
 let highscoreManager;
 let extremeSpeedAlert;
+let groundFireFlashUntil = 0;
+let groundFireFlashIntensity = 0;
+let groundFireFlashDuration = GROUND_FIRE_FLASH_DURATION;
 
 function initializeSystems() {
     highscoreManager = createHighscoreManager();
@@ -85,12 +91,24 @@ function initializeSystems() {
     powerUpSystem = createPowerUpSystem({
         indicatorElement: document.getElementById('powerup-indicator'),
         fires,
+        groundFires,
         firetruck,
         triggerVibration,
         createTone,
         createParticle,
         onScoreBonus: (bonus) => {
             score += bonus;
+        },
+        onWaterBlast: ({ totalCleared, groundCleared }) => {
+            const cleanupIntensity = Math.min(1, totalCleared / 8);
+            const durationBoost = 1 + Math.min(totalCleared, 12) * 0.08;
+            groundFireFlashIntensity = cleanupIntensity;
+            groundFireFlashDuration = GROUND_FIRE_FLASH_DURATION * durationBoost;
+            groundFireFlashUntil = Date.now() + groundFireFlashDuration;
+
+            if (groundCleared > 0) {
+                createParticle(firetruck.x + firetruck.width / 2, canvas.height - 40, '0,188,212');
+            }
         }
     });
     powerUpSystem.reset();
@@ -1001,6 +1019,10 @@ function startGame() {
     fires.length = 0;
     particles.length = 0;
     explosionParticles.length = 0;
+    groundFires.length = 0;
+    groundFireFlashUntil = 0;
+    groundFireFlashIntensity = 0;
+    groundFireFlashDuration = GROUND_FIRE_FLASH_DURATION;
     comboSystem?.reset();
     powerUpSystem?.reset();
     extremeSpeedAlert?.reset();
@@ -1391,6 +1413,24 @@ function spawnFire() {
     }
 }
 
+function spawnGroundFire(fire) {
+    const centerX = fire.x + fire.width / 2;
+    if (groundFires.length > 20) {
+        groundFires.shift();
+    }
+    groundFires.push({
+        x: centerX,
+        width: fire.width * (fire.type === 'large' ? 1.8 : 1.4),
+        y: canvas.height - 25,
+        createdAt: Date.now(),
+        duration: GROUND_FIRE_DURATION,
+        flickerSeed: Math.random() * Math.PI * 2
+    });
+
+    createParticle(centerX - 5, canvas.height - 45, '255,140,0');
+    createParticle(centerX + 5, canvas.height - 40, '255,94,0');
+}
+
 
 function updateFires() {
     if (gameState !== 'playing') return;
@@ -1402,6 +1442,7 @@ function updateFires() {
         
         // Remover fuegos que salieron de pantalla
         if (fire.y > canvas.height) {
+            spawnGroundFire(fire);
             fires.splice(i, 1);
             firesDodged++;
             score += 10;
@@ -1416,6 +1457,18 @@ function updateFires() {
             }
             gameOver();
             return;
+        }
+    }
+}
+
+function updateGroundFires() {
+    if (!groundFires.length) return;
+
+    const now = Date.now();
+    for (let i = groundFires.length - 1; i >= 0; i--) {
+        const groundFire = groundFires[i];
+        if (now - groundFire.createdAt >= groundFire.duration) {
+            groundFires.splice(i, 1);
         }
     }
 }
@@ -1644,6 +1697,92 @@ function drawParticles() {
     ctx.restore();
 }
 
+function drawGroundFires() {
+    if (!groundFires.length) return;
+
+    ctx.save();
+    const now = Date.now();
+    const flashRemaining = groundFireFlashUntil > now ? groundFireFlashUntil - now : 0;
+    const flashStrength = flashRemaining > 0 ? Math.min(1, flashRemaining / groundFireFlashDuration) : 0;
+    const intensityFactor = flashStrength > 0 ? Math.max(0.25, groundFireFlashIntensity) : 0;
+
+    for (const groundFire of groundFires) {
+        const baseY = groundFire.y ?? (canvas.height - 25);
+        const elapsed = now - groundFire.createdAt;
+        const progress = elapsed / groundFire.duration;
+        const alpha = Math.max(0, 1 - progress);
+
+        const flicker = Math.sin(now * 0.012 + groundFire.flickerSeed) * 0.12;
+        const width = groundFire.width * (1 + flicker);
+        const height = Math.max(18, groundFire.width * 0.55);
+        const centerX = groundFire.x;
+
+        ctx.globalAlpha = 0.35 * alpha;
+        ctx.fillStyle = 'rgba(62, 39, 35, 0.85)';
+        ctx.beginPath();
+        ctx.ellipse(centerX, baseY + height * 0.25, width * 0.9, height * 0.35, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        const gradient = ctx.createRadialGradient(
+            centerX,
+            baseY - height * 0.2,
+            4,
+            centerX,
+            baseY + height * 0.45,
+            width
+        );
+        gradient.addColorStop(0, `rgba(255, 241, 118, ${0.6 * alpha})`);
+        gradient.addColorStop(0.35, `rgba(255, 167, 38, ${0.5 * alpha})`);
+        gradient.addColorStop(0.7, `rgba(244, 81, 30, ${0.35 * alpha})`);
+        gradient.addColorStop(1, 'rgba(66, 30, 14, 0)');
+
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.ellipse(centerX, baseY, width, height, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.globalAlpha = 0.4 * alpha;
+        ctx.strokeStyle = `rgba(255, 204, 128, ${0.9 * alpha})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(centerX, baseY, width * 0.8, height * 0.65, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        if (flashStrength > 0) {
+            const eased = flashStrength * flashStrength * (0.7 + intensityFactor * 0.6);
+            const flashGradient = ctx.createRadialGradient(
+                centerX,
+                baseY - height * 0.1,
+                2,
+                centerX,
+                baseY + height * 0.6,
+                width * 1.15
+            );
+            flashGradient.addColorStop(0, `rgba(178, 235, 242, ${0.4 + 0.6 * eased})`);
+            flashGradient.addColorStop(0.5, `rgba(0, 188, 212, ${0.25 + 0.5 * eased})`);
+            flashGradient.addColorStop(1, 'rgba(0, 121, 107, 0)');
+
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = flashGradient;
+            ctx.beginPath();
+            ctx.ellipse(centerX, baseY, width * 1.1, height * 1.15, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.globalAlpha = 0.25 + 0.45 * eased;
+            ctx.strokeStyle = `rgba(224, 247, 250, ${0.6 + 0.35 * eased})`;
+            ctx.lineWidth = 2 + eased * 2.5;
+            ctx.beginPath();
+            ctx.ellipse(centerX, baseY, width * 0.9, height * 0.85, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.globalAlpha = 1;
+        }
+    }
+
+    ctx.restore();
+}
+
 function drawExplosionParticles() {
     ctx.save();
     for (const particle of explosionParticles) {
@@ -1762,6 +1901,8 @@ function render() {
 
         // Dibujar fuegos
         fires.forEach(fire => drawFire(fire));
+
+    drawGroundFires();
         
         // Dibujar autobomba
         drawFiretruck();
@@ -1787,6 +1928,8 @@ function gameLoop() {
         updateGameState();
         updateBackground();
     }
+    
+    updateGroundFires();
     
     // Actualizar efectos de explosión incluso en game over
     if (gameOverExplosion) {
@@ -1898,6 +2041,10 @@ function resetGame() {
     gameSpeed = 1;
     fires.length = 0;
     particles.length = 0;
+    groundFires.length = 0;
+    groundFireFlashUntil = 0;
+    groundFireFlashIntensity = 0;
+    groundFireFlashDuration = GROUND_FIRE_FLASH_DURATION;
     totalDistance = 0;
     currentSpeed = 0;
     maxSpeed = 0;

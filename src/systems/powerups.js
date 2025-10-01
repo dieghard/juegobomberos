@@ -6,14 +6,15 @@ const SLOWMO_FIRE_FACTOR = 0.55;
 export function createPowerUpSystem({
     indicatorElement,
     fires,
+    groundFires = null,
     firetruck,
     triggerVibration,
     createTone,
     createParticle,
-    onScoreBonus
+    onScoreBonus,
+    onWaterBlast
 }) {
     const powerUps = [];
-
     let shieldActive = false;
     let shieldExpiresAt = 0;
     let slowMotionActive = false;
@@ -170,20 +171,81 @@ export function createPowerUpSystem({
     }
 
     function activateWaterBlast() {
-        if (fires.length > 0) {
+        const airborneCleared = fires.length;
+        const groundCleared = groundFires ? groundFires.length : 0;
+        const totalCleared = airborneCleared + groundCleared;
+
+        const waterAudioLevel = totalCleared >= 10 ? 'large' : totalCleared >= 5 ? 'medium' : totalCleared >= 1 ? 'small' : 'minimal';
+
+        if (airborneCleared > 0) {
             for (const fire of fires) {
                 createParticle(fire.x, fire.y, '0,150,255');
             }
             fires.length = 0;
-            onScoreBonus?.(50);
+            onScoreBonus?.(50 + Math.min(airborneCleared * 5, 40));
         }
 
-        transientMessage = '💧 Bomba de agua activada';
-        transientMessageExpiresAt = Date.now() + 2000;
+        if (groundCleared > 0 && groundFires) {
+            const splashColor = '0,188,212';
+            for (const groundFire of groundFires) {
+                const baseY = (groundFire.y ?? 0) - 8;
+                const splashCount = Math.max(4, Math.round((groundFire.width / 18) + totalCleared * 0.6));
+                for (let i = 0; i < splashCount; i++) {
+                    const offset = (Math.random() - 0.5) * groundFire.width * (1 + totalCleared * 0.05);
+                    const x = groundFire.x + offset;
+                    const y = baseY - Math.random() * (12 + totalCleared * 2);
+                    createParticle(x, y, splashColor);
+                }
+            }
+            groundFires.length = 0;
+        }
+
+        if (totalCleared > 0) {
+            onWaterBlast?.({
+                totalCleared,
+                airborneCleared,
+                groundCleared
+            });
+        } else {
+            onWaterBlast?.({ totalCleared: 0, airborneCleared: 0, groundCleared: 0 });
+        }
+
+        if (totalCleared >= 10) {
+            transientMessage = `💧 Limpieza épica (${totalCleared})`;
+        } else if (totalCleared >= 5) {
+            transientMessage = `💧 Limpieza intensa (${totalCleared})`;
+        } else if (totalCleared >= 1) {
+            transientMessage = `💧 Refrescado (${totalCleared})`;
+        } else {
+            transientMessage = '💧 Bomba de agua activada';
+        }
+
+        transientMessageExpiresAt = Date.now() + (totalCleared > 0 ? 2500 : 2000);
         triggerVibration?.([120, 60, 40, 60]);
-        createTone?.(260, 0.18, 'square', 0.3);
-        createTone?.(180, 0.22, 'triangle', 0.18);
+        playWaterBlastAudio(waterAudioLevel);
         updateIndicator();
+    }
+
+    function playWaterBlastAudio(level) {
+        if (!createTone) return;
+
+        switch (level) {
+            case 'large':
+                createTone(320, 0.28, 'sawtooth', 0.32);
+                setTimeout(() => createTone(220, 0.36, 'triangle', 0.28), 20);
+                setTimeout(() => createTone(140, 0.46, 'sine', 0.24), 60);
+                break;
+            case 'medium':
+                createTone(280, 0.22, 'square', 0.28);
+                setTimeout(() => createTone(190, 0.28, 'triangle', 0.22), 30);
+                break;
+            case 'small':
+                createTone(240, 0.18, 'square', 0.24);
+                setTimeout(() => createTone(170, 0.20, 'triangle', 0.18), 25);
+                break;
+            default:
+                createTone(200, 0.12, 'sine', 0.15);
+        }
     }
 
     function activateSlowMotion() {
